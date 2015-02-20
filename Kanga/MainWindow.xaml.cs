@@ -117,6 +117,9 @@ namespace Kanga
                         ColVis("Resolution Notes", false);
                     }
                     lstIssues.ItemsSource = Issues.OrderByDescending(i => i.IssueType);
+                    staInfo.Text = Issues.Count() + " Issues Found";
+                    if (Issues.Count() == JiraAccess.MAX_RETURN_ROWS)
+                        staInfo.Text += " MAXED";
                 }
             }
             catch (Exception exc)
@@ -151,6 +154,7 @@ namespace Kanga
             var source = (JiraSourceEnum)Enum.Parse(typeof(JiraSourceEnum), cmbSource.Text);
             var project = (ProjectEnum)Enum.Parse(typeof(ProjectEnum), cmbProject.Text);
             Kangate(source, project, entVersion.Text, false);
+
         }
     }
     public class JiraIssue
@@ -436,6 +440,7 @@ namespace Kanga
     }
     static public class JiraAccess
     {
+        static public int MAX_RETURN_ROWS = 1000;
         static string GetUrl(JiraSourceEnum source)
         {
             if (source == JiraSourceEnum.Omnitracs)
@@ -463,7 +468,7 @@ namespace Kanga
                 if (project == ProjectEnum.RTS)
                     strProject = "(project=MOB OR project=RP OR project=ATT)";
                 else
-                    strProject = "(project=AP OR project=IN)";
+                    strProject = "(project=Apex OR project=Insight)";
                 jqlParts.Add(strProject);
                 jqlParts.Add("(issuetype=Bug OR issuetype=Story OR issuetype=Task)");
                 jqlParts.Add("(Status='Resolved' OR Status='Closed')");
@@ -477,7 +482,7 @@ namespace Kanga
                 jqlParts.Add("fixVersion=" + version);
 
             var jql = string.Join(" AND ", jqlParts.ToArray());
-            var request = @"/search?jql=" + jql + "&maxResults=200";
+            var request = @"/search?jql=" + jql + "&maxResults=" + MAX_RETURN_ROWS;
             if (!_getAllFields) // gets all fields but takes forever
             {
                 var fields = new List<string>() { "summary", "assignee", "fixVersions", "status", "issuetype"};
@@ -495,7 +500,18 @@ namespace Kanga
                 }
                 request += "&fields=" + string.Join(",", fields);
             }
-            return GetUrl(source) + request;
+
+            var rv = GetUrl(source) + request;
+            FileUtils.Log("GetSprint` " + rv);
+            return rv;
         }
     }
+    public static class FileUtils
+    {
+        internal static void Log(string str)
+        {
+            File.AppendAllText("endless.log", DateTimeOffset.Now + str + Environment.NewLine);
+        }
+    }
+
 }

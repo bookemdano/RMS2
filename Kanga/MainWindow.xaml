@@ -20,6 +20,7 @@
             <TextBlock VerticalAlignment="Center" Margin="10,0,0,0">Version:</TextBlock>
             <TextBox Name="entVersion" VerticalAlignment="Center" Width="100"/>
             <Button Click="btnGo_Click" Margin="5,0,5,0" Width="50">Go</Button>
+            <TextBlock Name="staInfo"  VerticalAlignment="Center"/>
         </StackPanel>
         <ListView Name="lstIssues" ItemsSource="{Binding Issues}" Grid.Row="1">
             <ListView.View>

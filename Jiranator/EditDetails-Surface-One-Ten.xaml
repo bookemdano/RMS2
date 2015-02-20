@@ -1,0 +1,20 @@
+﻿<Window x:Class="Jiranator.EditDetails"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      Height="315.79" Width="300"
+      Title="Edit Issue">
+
+    <StackPanel>
+        <Label>Summary</Label>
+        <TextBox Name="entSummary"  Margin="5,0,5,0"/>
+        <Label>Estimate</Label>
+        <TextBox Name="entEstimate" Margin="5,0,5,0"/>
+        <Label>Component</Label>
+        <ComboBox Name="cmbComponent" Margin="5" IsEditable="True"></ComboBox>
+        <Label>Assignee</Label>
+        <ComboBox Name="cmbAssignee" Margin="5" IsEditable="True"></ComboBox>
+        <Button Click="btnOK_Click" Margin="25">OK</Button>
+    </StackPanel>
+</Window>

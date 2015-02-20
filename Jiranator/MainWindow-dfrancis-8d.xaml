@@ -1,0 +1,59 @@
+﻿<Window x:Class="Jiranator.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        DataContext="{Binding RelativeSource={RelativeSource Self}}"
+        Title="Rawwwrr" Height="352" Width="518" Icon="Icon1.ico" Loaded="Window_Loaded">
+    <Window.Resources>
+        <ContextMenu x:Key="IssueContextMenu">
+            <MenuItem Header="Open" Click="btnOpen_Click" FontWeight="Bold" />
+            <MenuItem Header="Open On Board" Click="btnOpenOnBoard_Click" />
+            <Separator/>
+            <MenuItem Header="Mail" Click="btnMail_Click"/>
+            <MenuItem Header="Text" Click="btnText_Click"/>
+            <MenuItem Header="Copy" Click="btnCopy_Click"/>
+            <MenuItem Header="Unassign" Click="btnUnassign_Click"/>
+        </ContextMenu>
+    </Window.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="302*"/>
+            <RowDefinition Height="19*"/>
+        </Grid.RowDefinitions>
+        <TextBox x:Name="entFilter" Margin="10,39,94,0" Height="24" VerticalAlignment="Top" TextChanged="entFilter_TextChanged"/>
+        <Button Name="btnFind" Click="btnFind_Click" Margin="0,39,10,0" Height="24" VerticalAlignment="Top" HorizontalAlignment="Right" Width="79">Find</Button>
+        <TextBox Name="entSprint" Margin="10,10,183,0" Height="24" VerticalAlignment="Top">Sprint 20</TextBox>
+        <Button Name="btnSearch" Click="btnSearch_Click" Margin="0,10,94,0" Height="24" VerticalAlignment="Top" HorizontalAlignment="Right" Width="84">Search</Button>
+        <Button Click="btnClear_Click" Margin="0,10,10,0" Height="24" VerticalAlignment="Top" Content="Clear" HorizontalAlignment="Right" Width="79"/>
+        <!-- 
+        <TextBox Name="ent" Margin="10,53,106,0" Height="24" VerticalAlignment="Top">MOB-539</TextBox>
+        <Button Click="btnGet_Click" Margin="0,53,10,0" Height="24" VerticalAlignment="Top" HorizontalAlignment="Right" Width="79">Get</Button>
+        -->
+        <ListView Name="lstIssues" ItemsSource="{Binding Issues}" Margin="10,68,10,18" SelectionMode="Single">
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Setter Property="ContextMenu" Value="{StaticResource IssueContextMenu}" />
+                    <Setter Property="FontWeight" Value="{Binding FontWeight}"/>
+                    <Setter Property="Foreground" Value="{Binding Foreground}"/>
+                    <EventSetter Event="MouseDoubleClick" Handler="lstIssues_DoubleClick"/>
+                </Style>
+            </ListView.ItemContainerStyle>
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="Sprint" Width="auto" DisplayMemberBinding="{Binding Sprint}"/>
+                    <GridViewColumn Header="Assignee" Width="auto" DisplayMemberBinding="{Binding Assignee}"/>
+                    <GridViewColumn Header="Key" Width="auto" DisplayMemberBinding="{Binding Key}" />
+                    <GridViewColumn Header="Summary" Width="auto" DisplayMemberBinding="{Binding Summary}"/>
+                    <GridViewColumn Header="Type" Width="auto" DisplayMemberBinding="{Binding IssueType}"/>
+                    <GridViewColumn Header="Points" Width="auto" DisplayMemberBinding="{Binding StoryPoints}"/>
+                    <GridViewColumn Header="Status" Width="auto" DisplayMemberBinding="{Binding FauxStatus}"/>
+                    <GridViewColumn Header="Old Status" Width="auto" DisplayMemberBinding="{Binding OldFauxStatus}"/>
+                </GridView>
+            </ListView.View>
+        </ListView>
+        <CheckBox x:Name="chkShowSubtasks" Click="chkShow_Click" Margin="11,0,0,10"  Content="Show Subtasks" HorizontalAlignment="Left" Width="104" Height="17" VerticalAlignment="Bottom" Grid.RowSpan="2"/>
+        <CheckBox x:Name="chkShowResolved" Click="chkShow_Click"  Margin="115,0,0,10"  Content="Show Resolved" HorizontalAlignment="Left" Width="104" Height="17" VerticalAlignment="Bottom" Grid.RowSpan="2"/>
+        <Button x:Name="btnExport" Click="btnExport_Click" Margin="224,0,0,10"  Content="Export" HorizontalAlignment="Left" Width="53" Height="22" VerticalAlignment="Bottom" Grid.RowSpan="2"/>
+        <Button Click="btnClean_Click" Margin="282,0,0,9"  Content="Clean" HorizontalAlignment="Left" Width="53" Height="22" VerticalAlignment="Bottom" Grid.RowSpan="2"/>
+        <TextBlock Name="sta" Height="21" VerticalAlignment="Bottom" Margin="340,0,10,8" Grid.RowSpan="2">Status</TextBlock>
+    </Grid>
+</Window>
