@@ -468,7 +468,7 @@ namespace Kanga
                 if (project == ProjectEnum.RTS)
                     strProject = "(project=MOB OR project=RP OR project=ATT)";
                 else
-                    strProject = "(project=Apex OR project=Insight)";
+                    strProject = "(project=MOB OR project=Apex OR project=Insight)";
                 jqlParts.Add(strProject);
                 jqlParts.Add("(issuetype=Bug OR issuetype=Story OR issuetype=Task)");
                 jqlParts.Add("(Status='Resolved' OR Status='Closed')");
