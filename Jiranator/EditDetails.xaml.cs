@@ -55,7 +55,7 @@ namespace Jiranator
             cmbAssignee.Items.Add(_none);
             cmbAssignee.Items.Add("lstevens");
         }
-        static string _legion = "-legion-";
+        public static string _legion = "-legion-";
         public static string _none = "-";
         public EditDetails(JiraIssue issue) :
             this()

@@ -81,9 +81,14 @@
         <StackPanel Orientation="Horizontal" Grid.Row="4"  Grid.ColumnSpan="6">
             <CheckBox x:Name="chkAutoRefresh" Click="chkShow_Click">Auto Update</CheckBox>
             <CheckBox x:Name="chkShowSubtasks" Click="chkShow_Click">Show Subtasks</CheckBox>
-            <CheckBox x:Name="chkShowOther" Click="chkShow_Click">Show Other</CheckBox>
-            <CheckBox x:Name="chkShowResolved" Click="chkShow_Click">Show Resolved</CheckBox>
-            <CheckBox x:Name="chkShowTesting" Click="chkShow_Click">Show Testing</CheckBox>
+            <ComboBox Name="cmbShowByStatus" VerticalAlignment="Center">
+                <CheckBox x:Name="chkShowResolved" Click="chkShow_Click">Show Resolved</CheckBox>
+                <CheckBox x:Name="chkShowTesting" Click="chkShow_Click">Show Testing</CheckBox>
+                <CheckBox x:Name="chkShowOnHold" Click="chkShow_Click">Show OnHold</CheckBox>
+                <CheckBox x:Name="chkShowOther" Click="chkShow_Click">Show Other</CheckBox>
+                <TextBlock Text="-legion-" IsEnabled="False"/>
+                <Button Click="btnShowAll_Click">-All-</Button>
+            </ComboBox>
             <ToggleButton x:Name="tglChartType" Click="tglShow_Click" Margin="5">Chart Type</ToggleButton>
             <CheckBox Name="chkChartStoryPoints" Click="chkChart_Click">SPs</CheckBox>
             <CheckBox Name="chkChartTasks" Click="chkChart_Click">Tasks</CheckBox>

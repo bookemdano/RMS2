@@ -35,9 +35,11 @@ namespace Jiranator
             ControlHelper.Read(chkShowResolved);
             ControlHelper.Read(chkShowSubtasks);
             ControlHelper.Read(chkShowTesting);
+            ControlHelper.Read(chkShowOnHold);
             ControlHelper.Read(tglChartType);
             ControlHelper.Read(chkChartStoryPoints);
             ControlHelper.Read(chkChartTasks);
+            UpdateShowByStatus();
             lstIssues.ItemsSource = Issues;
             var dt = new DispatcherTimer();
             dt.Interval = TimeSpan.FromHours(1);
@@ -45,6 +47,54 @@ namespace Jiranator
             dt.Start();
 
             Test();
+        }
+
+        private CheckBox[] GetShowByStatus()
+        {
+            var rv = new List<CheckBox>();
+            foreach (var item in cmbShowByStatus.Items)
+            {
+                if (item is CheckBox)
+                {
+                    var chk = item as CheckBox;
+                    if (!(chk.Content as string).StartsWith("-"))
+                        rv.Add(item as CheckBox);
+                }
+            }
+            return rv.ToArray();
+        }
+
+        private void btnShowAll_Click(object sender, RoutedEventArgs e)
+        {
+            var chks = GetShowByStatus();
+            foreach (var chk in chks)
+                chk.IsChecked = true;
+            chkShow_Click(null, null);
+        }
+
+        private void chkShowNone_Click(object sender, RoutedEventArgs e)
+        {
+            var chks = GetShowByStatus();
+            foreach (var chk in chks)
+                chk.IsChecked = false;
+            chkShow_Click(null, null);
+        }
+
+        private void UpdateShowByStatus()
+        {
+            var chks = GetShowByStatus();
+
+            int nChecks = chks.Count();
+            int nChecked = chks.Count(c => c.IsChecked == true);
+
+            if (nChecked == 0)
+                cmbShowByStatus.Text = "-None-";
+            else if (nChecked == nChecks)
+                cmbShowByStatus.Text = "-All-";
+            else if (nChecked > 1)
+                cmbShowByStatus.Text = "-legion-";
+            else
+                cmbShowByStatus.Text = chks.SingleOrDefault(c => c.IsChecked == true)?.Content as string;
         }
 
         private void Dt_Tick(object sender, EventArgs e)
@@ -89,20 +139,23 @@ namespace Jiranator
 
         }
         // based on resolved
-        private static bool ShowIssue(JiraIssue issue, string filter, bool showOther, bool showResolved, bool showTesting)
+        private static bool ShowIssue(JiraIssue issue, string filter, ShowStatusEnum showStatus)
         {
             var rv = true;
             if (!string.IsNullOrWhiteSpace(filter))
                 rv = issue.Contains(filter);
-            else if (showResolved)
+            else if (showStatus.HasFlag(ShowStatusEnum.Resolved))
                 rv = true;
             else if (issue.IsResolved)
                 rv = false;
             else
                 rv = true;
-            if (rv && !showTesting && (issue.IsTesting || issue.IsDoc))
+
+            if (rv && !showStatus.HasFlag(ShowStatusEnum.OnHold) && issue.IsOnHold)
                 rv = false;
-            if (rv && !showOther && !(issue.IsTesting || issue.IsDoc || issue.IsResolved))
+            if (rv && !showStatus.HasFlag(ShowStatusEnum.Testing) && (issue.IsTesting || issue.IsDoc))
+                rv = false;
+            if (rv && !showStatus.HasFlag(ShowStatusEnum.Other) && !(issue.IsTesting || issue.IsDoc || issue.IsResolved || issue.IsOnHold))
                 rv = false;
 
             return rv;
@@ -332,30 +385,32 @@ namespace Jiranator
                 return chkShowSubtasks.IsChecked == true;
             }
         }
-
-        bool ShowOther
+        [Flags]
+        public enum ShowStatusEnum
+        {
+            None = 0,
+            Other = 1,
+            OnHold = 2,
+            Testing = 4,
+            Resolved = 8
+        }
+        ShowStatusEnum ShowStatus
         {
             get
             {
-                return chkShowOther.IsChecked == true;
+                var rv = ShowStatusEnum.None;
+                if (chkShowOther.IsChecked == true)
+                    rv |= ShowStatusEnum.Other;
+                if (chkShowOnHold.IsChecked == true)
+                    rv |= ShowStatusEnum.OnHold;
+                if (chkShowTesting.IsChecked == true)
+                    rv |= ShowStatusEnum.Testing;
+                if (chkShowResolved.IsChecked == true)
+                    rv |= ShowStatusEnum.Resolved;
+                return rv;
             }
         }
 
-        bool ShowResolved
-        {
-            get
-            {
-                return chkShowResolved.IsChecked == true;
-            }
-        }
-
-        bool ShowTesting
-        {
-            get
-            {
-                return chkShowTesting.IsChecked == true;
-            }
-        }
         private void RefreshIssueList(bool filterChangeOnly)
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -371,7 +426,7 @@ namespace Jiranator
             if (!filterChangeOnly)
                 UpdateStatsForOld();
 
-            var issues = RefreshIssues(_jiraSprint, _stats, _filter, ShowSubtasks, ShowOther, ShowResolved, ShowTesting);
+            var issues = RefreshIssues(_jiraSprint, _stats, _filter, ShowSubtasks, ShowStatus);
             if (!filterChangeOnly || IssuesChanged(issues))
             {
                 Issues = issues;
@@ -388,7 +443,7 @@ namespace Jiranator
         {
             if (issues.Count() != Issues.Count())
                 return true;
-            for(int i = 0; i < issues.Count(); i++)
+            for (int i = 0; i < issues.Count(); i++)
             {
                 if (issues[i].Key != Issues[i].Key)
                     return true;
@@ -429,7 +484,7 @@ namespace Jiranator
             UpdateTotals();
         }
 
-        private static ObservableCollection<JiraIssueViewModel> RefreshIssues(JiraSprint jiraSprint, SprintStats stats, string filter, bool showSubtasks, bool showOther, bool showResolved, bool showTesting)
+        private static ObservableCollection<JiraIssueViewModel> RefreshIssues(JiraSprint jiraSprint, SprintStats stats, string filter, bool showSubtasks, ShowStatusEnum showStatus)
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
 
@@ -438,14 +493,14 @@ namespace Jiranator
             {
                 try
                 {
-                    var showParent = ShowIssue(issue, filter, showOther, showResolved, showTesting);
+                    var showParent = ShowIssue(issue, filter, showStatus);
                     if (showParent)
                         rv.Add(new JiraIssueViewModel(issue));
                     if (showSubtasks || !string.IsNullOrWhiteSpace(filter))
                     {
                         foreach (var subtask in issue.SubTasks)
                         {
-                            if (showParent || ShowIssue(subtask, filter, showOther, showResolved, showTesting))
+                            if (showParent || ShowIssue(subtask, filter, showStatus))
                                 rv.Add(new JiraIssueViewModel(subtask));
                         }
                     }
@@ -657,7 +712,7 @@ namespace Jiranator
             if (File.Exists(file))
                 outs = File.ReadAllLines(Path.Combine(JiraAccessFile.Dir, "sprints.csv")).ToList();
             else
-                outs = new List<string>();    
+                outs = new List<string>();
 
             foreach (var sprint in SprintParameters.Params)
             {
@@ -717,7 +772,8 @@ namespace Jiranator
             ControlHelper.Save(chkShowSubtasks);
             ControlHelper.Save(chkAutoRefresh);
             ControlHelper.Save(chkShowTesting);
-
+            ControlHelper.Save(chkShowOnHold);
+            UpdateShowByStatus();
             RefreshIssueList(true);
         }
 
@@ -838,7 +894,7 @@ namespace Jiranator
         }
 
         private static void SendSmsMessage(string phoneNumber, JiraIssue issue)
-       {
+        {
             var sw = Stopwatch.StartNew();
             var client = GetTwilioClient();
             client.SendSmsMessage(GetSenderNumber(), phoneNumber, issue.Key + " " + issue.Summary + " " + issue.LinkDirect, StatusCallback);
@@ -849,7 +905,7 @@ namespace Jiranator
         {
             FileUtils.Log("StatusCallback " + msg.Status, null);
         }
-        private static string ToPhoneNumber 
+        private static string ToPhoneNumber
         {
             get
             {
@@ -960,7 +1016,7 @@ namespace Jiranator
             else
                 btnUpdate.Foreground = Brushes.OrangeRed;
         }
-        
+
         private void btnTest_Click(object sender, RoutedEventArgs e)
         {
             btnText_Click(sender, e);
@@ -1081,7 +1137,7 @@ namespace Jiranator
             //var selected = e.AddedItems[0].ToString();
             //var index = selected.IndexOf(" v. ");
             //var dtStr = selected.Substring(index + " v. ".Length);
-            var dt = (DateTimeOffset) (e.AddedItems[0] as ComboBoxItem).Tag;
+            var dt = (DateTimeOffset)(e.AddedItems[0] as ComboBoxItem).Tag;
             if (JiraAccessFile.OldCompare != dt)
             {
                 JiraAccessFile.OldCompare = dt;
