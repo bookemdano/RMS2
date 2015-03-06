@@ -10,30 +10,39 @@ using System.Windows;
 
 namespace Jiranator
 {
+    public enum JiraSourceEnum
+    {
+        SDLC,
+        Omnitracs
+    }
 
     // TODONE 8/2014 Way faster
     static public class JiraAccess
     {
         static bool _getAllFields = false;  // gets all fields but takes forever
-        //static string _latestApi = @"https://jira.omnitracs.com/rest/api/latest";
-        static string _latestApi = @"https://roadnetmobiledev.atlassian.net/rest/api/latest";
+        static public string SourceUrl(JiraSourceEnum source)
+        {
+            var rv = "";
+            if (source == JiraSourceEnum.Omnitracs)
+                rv = @"https://jira.omnitracs.com";
+            else
+                rv = @"https://roadnetmobiledev.atlassian.net";
+            return rv;
+        }
+        static string LatestApi(JiraSourceEnum source)
+        {
+            return SourceUrl(source) + "/rest/api/latest";
+        }
 
-        static string _linkOnBoard = @"https://roadnetmobiledev.atlassian.net/secure/RapidBoard.jspa?rapidView=3&view=detail&selectedIssue=";
-        static string _linkDirect = @"https://roadnetmobiledev.atlassian.net/browse/";
-        static public string LinkDirect
+        static public string LinkOnBoard(JiraSourceEnum source)
         {
-            get
-            {
-                return _linkDirect;
-            }
+            return SourceUrl(source) + "/secure/RapidBoard.jspa?rapidView=3&view=detail&selectedIssue=";
         }
-        static public string LinkOnBoard
+        static public string LinkDirect(JiraSourceEnum source)
         {
-            get
-            {
-                return _linkOnBoard;
-            }
+            return SourceUrl(source) + "/browse/";
         }
+
         static public string GetEncodedCredentials(string username, string password)
         {
             string mergedCredentials = username + ":" + password;
@@ -41,22 +50,22 @@ namespace Jiranator
             return Convert.ToBase64String(byteCredentials);
         }
 
-        internal static string GetIssueJsonUri(string key)
+        internal static string GetIssueJsonUri(JiraSourceEnum source, string key)
         {
-            return _latestApi + @"/issue/" + key + ".json";
+            return LatestApi(source) + @"/issue/" + key + ".json";
         }
 
-        internal static string SearchIssuesUri(string text)
+        internal static string SearchIssuesUri(JiraSourceEnum source, string text)
         {
             //var fmt = _latestApi + @"/search?jql=text~'{0}' OR issue='{0}'&maxResults=200";
-            var fmt = _latestApi + @"/search?jql=text~'{0}'&maxResults=200";
+            var fmt = LatestApi(source) + @"/search?jql=text~'{0}'&maxResults=200";
 
             return string.Format(fmt, text);
         }
 
-        internal static string FindIssuesUri(string text)
+        internal static string FindIssuesUri(JiraSourceEnum source, string text)
         {
-            var fmt = _latestApi + @"/search?jql=issue='{0}'&maxResults=200";
+            var fmt = LatestApi(source) + @"/search?jql=issue='{0}'&maxResults=200";
 
             return string.Format(fmt, text);
         }
@@ -73,21 +82,45 @@ namespace Jiranator
                     jql += string.Format(" AND Sprint='{0}'", sprint);
             }
             var request = @"/search?jql=" + jql + "&maxResults=200";
-            if (!_getAllFields)   // setting to false gets all fields but takes forever
-            {
-                var fields = new List<string>() { "parent", "summary", "assignee", "components", "versions", "fixVersions", "status", "timetracking", JiraIssue.StoryPointField, JiraIssue.IssueTypeField, JiraIssue.SprintField };
-                request += "&fields=" + string.Join(",", fields);
-            }
-            return _latestApi + request;
+            request += FieldsToGet();
+            return LatestApi(JiraSourceEnum.SDLC) + request;
+        }
+        internal static string GetEpicsUri(string project)
+        {
+            //str = HttpGet(_latestApi + @"/search?jql=project=MOB AND Sprint='Sprint 16' and issuetype not in (subTaskIssueTypes())&maxResults=200&fields=parent,summary,subtasks,assignee," + JiraIssue.IssueTypeField);
+            var jql = string.Format("project={0}", project);
+            //jql += " AND (issuetype='EPIC' OR 'Epic Link' IS NOT EMPTY)"; // can't use JiraIssue.EpicLinkField in query
+            jql += " AND issuetype='EPIC'";
+            jql += " AND 'Epic Status'=Done";
+
+            var request = @"/search?jql=" + jql + "&maxResults=1000";
+            request += FieldsToGet();
+            return LatestApi(JiraSourceEnum.SDLC) + request;
         }
 
-        internal static string GetIssueUri(string key)
+        internal static string GetIssuesForEpicUri(string epicKey)
         {
-            return _latestApi + @"/issue/" + key;
+            var jql = " 'Epic Link'= " + epicKey; // can't use JiraIssue.EpicLinkField in query
+            var request = @"/search?jql=" + jql + "&maxResults=1000";
+            request += FieldsToGet();
+            return LatestApi(JiraSourceEnum.SDLC) + request;
         }
-        internal static string GetIssuesUri()
+
+        static string FieldsToGet()
         {
-            return _latestApi + @"/issue";
+            if (_getAllFields)
+                return null;
+            // setting to false gets all fields but takes forever
+            var fields = new List<string>() { "parent", "summary", "assignee", "components", "versions", "fixVersions", "status", "timetracking", JiraIssue.StoryPointField, "issuetype", JiraIssue.SprintField, JiraIssue.EpicLinkField, JiraIssue.EpicStatusField };
+            return "&fields=" + string.Join(",", fields);
+        }
+        internal static string GetIssueUri(JiraSourceEnum source, string key)
+        {
+            return LatestApi(source) + @"/issue/" + key;
+        }
+        internal static string GetIssuesUri(JiraSourceEnum source)
+        {
+            return LatestApi(source) + @"/issue";
         }
         internal static JObject MakeJobj(string name, JToken token)
         {
@@ -100,10 +133,10 @@ namespace Jiranator
         {
             return GetArrayBody("components", names);
         }
-
+        static string _none = "-"; // sync with EditDetails._none
         private static string GetArrayBody(string tag, string name)
         {
-            if (name == EditDetails._none)
+            if (name == _none)
                 name = null;
             var jobj1 = MakeJobj("name", name);
             var jarray2 = new JArray();
@@ -119,7 +152,7 @@ namespace Jiranator
         private static string GetArrayBody(string tag, List<string> names)
         {
             if (names == null)
-                return GetArrayBody(tag, EditDetails._none);
+                return GetArrayBody(tag, _none);
 
             var components = new JArray();
             foreach (var name in names)
@@ -141,7 +174,7 @@ namespace Jiranator
 
         internal static string GetAssignBody(string name)
         {
-            if (name == EditDetails._none)
+            if (name == _none)
                 name = null;
             var jobj1 = MakeJobj("name", name);
             var jobj2 = MakeJobj("assignee", jobj1);
@@ -178,9 +211,9 @@ namespace Jiranator
     }
     static public class JiraAccessFile
     {
-        static bool _saveUncompressedCopy = true;
+        static bool _saveUncompressedCopy = false;
 
-        internal static void CleanUp()
+        internal static int CleanUp()
         {
             var files = Directory.GetFiles(Dir, "*.jz");
             var datedFiles = files.Where(f => DateTimeFromFileName(f) != DateTime.MinValue).ToArray();
@@ -195,11 +228,16 @@ namespace Jiranator
                 if (!saved.Contains(kvp.Last()))
                     saved.Add(kvp.Last());
             }
+            int rv = 0;
             foreach (var datedFile in datedFiles)
             {
                 if (!saved.Contains(datedFile))
+                {
                     File.Delete(datedFile);
+                    rv++;
+                }
             }
+            return rv;
         }
 
         static string _dir;
@@ -248,14 +286,19 @@ namespace Jiranator
             return subFiles.OrderByDescending(f => DateTimeFromFileName(f)).First();
         }
 
-        private static string GetFileMask(SprintKey key)
+        public static string GetFileMask(SprintKey key)
         {
             return key.ToFilename() + "-*.jz";
         }
 
-        private static string GetFilename(SprintKey key, DateTimeOffset timestamp)
+        public static string GetFilename(SprintKey key, DateTimeOffset timestamp)
         {
-            return Path.Combine(Dir, key.ToFilename() + "-" + timestamp.ToString("yyyyMMdd HHmmss") + ".jz");
+            return GetFilename(key.ToFilename(), timestamp);
+        }
+
+        public static string GetFilename(string filenameStub, DateTimeOffset timestamp)
+        {
+            return Path.Combine(Dir, filenameStub + "-" + timestamp.ToString("yyyyMMdd HHmmss") + ".jz");
         }
 
         public static void WriteResults(string filename, string str)
@@ -263,20 +306,7 @@ namespace Jiranator
             File.WriteAllText(Path.Combine(Dir, filename), str);
         }
 
-        static private Dictionary<string, DateTimeOffset> GetDatedFiles(SprintKey sprintKey)
-        {
-            var files = Directory.GetFiles(Dir, GetFileMask(sprintKey));
-
-            if (files == null || files.Count() == 0)
-                return null;
-
-            var fileDates = new Dictionary<string, DateTimeOffset>();
-            foreach (var file in files)
-                fileDates.Add(file, DateTimeFromFileName(file));
-            return fileDates;
-        }
-
-        private static DateTimeOffset DateTimeFromFileName(string filename)
+        public static DateTimeOffset DateTimeFromFileName(string filename)
         {
             var parts = Path.GetFileNameWithoutExtension(filename).Split("-".ToCharArray());
             var rv = DateTimeOffset.MinValue;
@@ -290,9 +320,9 @@ namespace Jiranator
             return rv;
         }
 
-        internal static void Write(SprintKey sprintKey, string str)
+        internal static void Write(string filenameStub, string str)
         {
-            var name = GetFilename(sprintKey, DateTimeOffset.Now);
+            var name = GetFilename(filenameStub, DateTimeOffset.Now);
             var compressed = ZipStr(str);
             File.WriteAllBytes(name, compressed);
             if (_saveUncompressedCopy)   // write an uncompressed copy
@@ -312,92 +342,7 @@ namespace Jiranator
             var compressed = File.ReadAllBytes(filename);
             return UnZipStr(compressed);
         }
-        // TODONE 2104/07/28 zipped all files
-        // TODO Save a copy as json, let clean clear them all out.
-        static dynamic _oldStat;
-        internal static SprintStats ReadStats(JiraSprint currentSprint)
-        {
-            bool logSpeed = true;
-            var sw = System.Diagnostics.Stopwatch.StartNew();
 
-            var key = currentSprint.Key;
-
-            var fileTimes = GetDatedFiles(key);
-            if (logSpeed)
-                FileUtils.Log("ReadStats GetDatedFiles", sw);
-
-            if (_oldStat != null &&
-                _oldStat.Key.ToString() == key.ToString() &&
-                _oldStat.Timestamp > DateTimeOffset.Now.AddHours(-4) &&
-                _oldStat.DatedFilesCount == fileTimes.Count())
-                return _oldStat.Stats;
-            if (logSpeed)
-                FileUtils.Log("ReadStats CheckOld", sw);
-
-            var dts = fileTimes?.Select(f => f.Value);
-
-            var rv = new SprintStats(key);
-            if (dts == null)
-                return rv;
-            rv.AddStats(currentSprint, SprintStat.SpecialEnum.Current);
-            var importants = ImportantOnly(dts);
-            if (logSpeed)
-                FileUtils.Log("ReadStats importants " + dts.Count(), sw);
-            bool logEachSpeed = false;
-            foreach (var dt in dts)
-            {
-                try
-                {
-                    var name = GetFilename(key, dt);
-                    var compressed = File.ReadAllBytes(name);
-                    if (logEachSpeed)
-                        FileUtils.Log("ReadAllBytes " + dt, sw);
-                    var str = UnZipStr(compressed);
-
-                    if (logEachSpeed)
-                        FileUtils.Log("UnZipStr " + dt, sw);
-                    if (string.IsNullOrWhiteSpace(str))
-                        continue;
-                    var jiraSprint = JiraSprint.Parse(JObject.Parse(str));
-                    if (logEachSpeed)
-                        FileUtils.Log("Parse " + dt, sw);
-                    jiraSprint.RetrieveTime = dt;
-                    var important = importants.Any(d => d == dt);
-                    rv.AddStats(jiraSprint, important ? SprintStat.SpecialEnum.Significant : SprintStat.SpecialEnum.NotSpecial);
-                    if (logEachSpeed)
-                        FileUtils.Log("Done " + dt, sw);
-                }
-                catch (Exception exc)
-                {
-                    FileUtils.ErrorLog("ReadOlds", exc);
-                }
-            }
-
-            _oldStat = new { Key = key, Stats = rv, Timestamp = DateTimeOffset.Now, DatedFilesCount = fileTimes.Count };
-            return rv;
-        }
-
-        static private List<DateTimeOffset> ImportantOnly(IEnumerable<DateTimeOffset> dts)
-        {
-            var rv = new List<DateTimeOffset>();
-            var ordered = dts.OrderBy(d => d);
-            var notToday = ordered.Where(kvp => kvp.Date != DateTime.Today);
-            if (notToday.Count() == 0)
-                return rv;
-
-            var lastBeforeToday = notToday.Last();
-            foreach (var d in ordered)
-            {
-                if (d == DateTimeOffset.MinValue)
-                    continue;
-                var date = d.Date;
-                if (!rv.Any(kvp2 => kvp2.Date == date))
-                    rv.Add(d);
-                else if (d == lastBeforeToday)
-                    rv.Add(d);
-            }
-            return rv;
-        }
 
         public static byte[] ZipStr(String str)
         {
@@ -435,19 +380,34 @@ namespace Jiranator
     }
     public static class JiraHttpAccess
     {
-        public static string GetLive(string project, string sprint, bool showError)
+        public static string GetSprintLive(string project, string sprint, bool showError)
         {
-            var rv = HttpAccess.HttpGet(JiraAccess.GetSprintUri(project, sprint), showError);
+            var rv = HttpAccess.HttpGet(JiraSourceEnum.SDLC, JiraAccess.GetSprintUri(project, sprint), showError);
             //var rv = HttpAccess.HttpGet(JiraAccess.GetSprintUri(project, sprint), showError);
             //File.WriteAllLines("search.fancy.json", SplitLinesDeep(str));
-            JiraAccessFile.Write(new SprintKey(project, sprint), rv);
+            JiraAccessFile.Write(new SprintKey(project, sprint).ToFilename(), rv);
+            return rv;
+        }
+        public static string GetEpicsLive(string project, bool showError, bool saveFile = true)
+        {
+            var rv = HttpAccess.HttpGet(JiraSourceEnum.SDLC, JiraAccess.GetEpicsUri(project), showError);
+            if (saveFile)
+                JiraAccessFile.Write(project + "-Epics", rv);
+            return rv;
+        }
+
+        internal static string GetEpicsIssuesLive(string epicKey, bool showError, bool saveFile = true)
+        {
+            var rv = HttpAccess.HttpGet(JiraSourceEnum.SDLC, JiraAccess.GetIssuesForEpicUri(epicKey), showError);
+            if (saveFile)
+                JiraAccessFile.Write("Epic-" + epicKey + "-Issues", rv);
             return rv;
         }
     }
 
     public static class HttpAccess
     {
-        internal static string HttpGet(string url, bool showError)
+        internal static string HttpGet(JiraSourceEnum source, string url, bool showError)
         {
             string result = null;
             try
@@ -455,7 +415,7 @@ namespace Jiranator
                 var request = WebRequest.Create(url) as HttpWebRequest;
                 request.ContentType = "application/json";
                 request.Method = "GET";
-                request.Headers.Add("Authorization", "Basic " + EncodedCredentials);
+                request.Headers.Add("Authorization", "Basic " + EncodedCredentials(source));
                 using (var resp = request.GetResponse() as HttpWebResponse)
                 {
                     var reader = new StreamReader(resp.GetResponseStream());
@@ -473,6 +433,8 @@ namespace Jiranator
 
         internal static string HttpPut(string url, string json)
         {
+            if (url.Contains(JiraAccess.SourceUrl(JiraSourceEnum.Omnitracs)))
+                return "Cannot edit Omnitracs Jira";
             try
             {
                 var request = WebRequest.Create(url)
@@ -485,7 +447,7 @@ namespace Jiranator
                     streamWriter.Write(json);
                 }
 
-                request.Headers.Add("Authorization", "Basic " + EncodedCredentials);
+                request.Headers.Add("Authorization", "Basic " + EncodedCredentials(JiraSourceEnum.SDLC));
                 string result = null;
                 using (var resp = request.GetResponse() as HttpWebResponse)
                 {
@@ -504,6 +466,8 @@ namespace Jiranator
 
         internal static string HttpPost(string url, string json)
         {
+            if (url.Contains(JiraAccess.SourceUrl(JiraSourceEnum.Omnitracs)))
+                return "Cannot edit Omnitracs Jira";
             try
             {
                 var request = WebRequest.Create(url)
@@ -516,7 +480,7 @@ namespace Jiranator
                     streamWriter.Write(json);
                 }
 
-                request.Headers.Add("Authorization", "Basic " + EncodedCredentials);
+                request.Headers.Add("Authorization", "Basic " + EncodedCredentials(JiraSourceEnum.SDLC));
 
                 string result = null;
                 using (var resp = request.GetResponse() as HttpWebResponse)
@@ -534,13 +498,14 @@ namespace Jiranator
             }
         }
 
-        static string EncodedCredentials
+        static string EncodedCredentials(JiraSourceEnum source)
         {
-            get
-            {
-                return JiraAccess.GetEncodedCredentials("orashkevych", "roadnet");
-                //return JiraAccess.GetEncodedCredentials("dfrancis", "mibos");
-            }
+            var rv = "";
+            if (source == JiraSourceEnum.SDLC)
+                rv = JiraAccess.GetEncodedCredentials("orashkevych", "roadnet");
+            else //if (source == JiraSourceEnum.Omnitracs)
+                rv = JiraAccess.GetEncodedCredentials("dfrancis", "mibos");
+            return rv;
         }
 
 

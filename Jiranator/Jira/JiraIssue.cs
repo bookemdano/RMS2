@@ -30,6 +30,7 @@ namespace Jiranator
         #region Ctor
         public JiraIssue()
         {
+
         }
 
         public JiraIssue(JiraIssue other) : this()
@@ -38,7 +39,10 @@ namespace Jiranator
             IsSubtask = other.IsSubtask;
             Summary = other.Summary;
             CreatedDate = other.CreatedDate;
+            Source = other.Source;
             Progress = other.Progress;
+            EpicStatus = other.EpicStatus;
+            EpicLink = other.EpicLink;
             Components = other.Components;
             FixVersions = other.FixVersions;
             AffectsVersions = other.AffectsVersions;
@@ -79,12 +83,12 @@ namespace Jiranator
 
         internal static string ToCsvHeader()
         {
-            return "Sprint,Assignee,Key,Summary,IssueType,StoryPoints,Status,CalcedStatus,IsSubtask,Versions";
+            return "Sprint,Assignee,Key,Summary,IssueType,StoryPoints,Status,CalcedStatus,IsSubtask,Source,Versions";
         }
 
         internal string ToCsv()
         {
-            return Sprint + "," + Assignee + "," + Key + "," + Summary.Replace(",", "-") + "," + IssueType + "," + StoryPoints + "," + Status + "," + CalcedStatus + "," + IsSubtask + "," + FixVersionsString;
+            return Sprint + "," + Assignee + "," + Key + "," + Summary.Replace(",", "-") + "," + IssueType + "," + StoryPoints + "," + Status + "," + CalcedStatus + "," + IsSubtask + "," + Source + "," + FixVersionsString;
         }
 
         internal bool Contains(string filter)
@@ -124,6 +128,8 @@ namespace Jiranator
         public string Key { get; private set; }
         public bool IsSubtask { get; private set; }
         public string Summary { get; private set; }
+        public string EpicLink { get; private set; }
+        public string EpicStatus { get; private set; }
         public DateTime? CreatedDate { get; private set; }
         public int Progress { get; private set; }
         public List<JiraIssue> SubTasks { get; private set; }
@@ -160,7 +166,7 @@ namespace Jiranator
 
         private StatusEnum CalcStatus()
         {
-           var rv = StatusEnum.Unknown;
+            var rv = StatusEnum.Unknown;
             if (SubTasks.Count() == 0)
             {
                 rv = Status;
@@ -264,7 +270,7 @@ namespace Jiranator
         {
             get
             {
-                return CalcedStatus == StatusEnum.OnHold || CalcedStatus == StatusEnum.CodeReview;
+                return CalcedStatus == StatusEnum.OnHold || CalcedStatus == StatusEnum.Blocked || CalcedStatus == StatusEnum.CodeReview;
             }
         }
 
@@ -285,6 +291,7 @@ namespace Jiranator
             InProgress,
             Partial,
             OnHold,
+            Blocked,
             CodeReview,
             ReadyForTesting,
             InTesting,
@@ -308,6 +315,10 @@ namespace Jiranator
         #endregion
 
         #region JSON
+        internal static JiraIssue Parse(string str)
+        {
+            return Parse(JObject.Parse(str));
+        }
 
         internal static JiraIssue Parse(JToken json)
         {
@@ -324,6 +335,8 @@ namespace Jiranator
                     if (double.TryParse(str, out d))
                         rv.StoryPoints = d;
                 }
+                rv.EpicLink = GetString(fields, EpicLinkField);
+                rv.EpicStatus = GetString(fields, EpicStatusField);
                 if (fields[SprintField] != null)
                 {
                     foreach (var sprintPart in fields[SprintField])
@@ -342,8 +355,13 @@ namespace Jiranator
                     }
                     //var start = (string) sprintField["startdate"];
                 }
-                var issueType = fields[IssueTypeField];
+                var issueType = fields["issuetype"];
                 rv.IssueType = (string)issueType["name"];
+                var self = (string)issueType["self"];
+                if (self.Contains(JiraAccess.SourceUrl(JiraSourceEnum.Omnitracs)))
+                    rv.Source = JiraSourceEnum.Omnitracs;
+                else
+                    rv.Source = JiraSourceEnum.SDLC;
                 rv.IsSubtask = (bool)issueType["subtask"];
                 if (fields["created"] != null)
                     rv.CreatedDate = (DateTime)fields["created"];
@@ -351,7 +369,7 @@ namespace Jiranator
                 if (fields["status"] != null)
                 {
                     var status = fields["status"];
-                    rv.Status = GetStatusEnum((string) status["name"]);
+                    rv.Status = GetStatusEnum((string)status["name"]);
                 }
 
                 if (fields["progress"] != null)
@@ -372,8 +390,7 @@ namespace Jiranator
                 rv.Assignee = GetString(fields, "assignee", "name");
                 GetArrayedItem(rv.Components, fields["components"]);
                 GetArrayedItem(rv.FixVersions, fields["fixVersions"]);
-                if (rv.Key == "MOB-3205")
-                    GetArrayedItem(rv.AffectsVersions, fields["versions"]);
+                GetArrayedItem(rv.AffectsVersions, fields["versions"]);
 
                 var subs = fields["subtasks"];
                 rv.SubTasks = new List<JiraIssue>();
@@ -387,6 +404,32 @@ namespace Jiranator
                 return rv;
             }
             catch (Exception exc)
+            {
+                throw;
+            }
+        }
+        private static string GetString(JToken fields, string fieldName)
+        {
+            try
+            {
+                var field = fields[fieldName];
+                if (field == null)
+                    return null;
+
+                if (field.Type == JTokenType.String)
+                    return (string)field;
+                if (field.HasValues)
+                {
+                    var valueField = field["value"];
+                    if (valueField != null)
+                        return (string)valueField;
+                    var nameField = field["name"];
+                    if (nameField != null)
+                        return (string)nameField;
+                }   
+                return null;
+            }
+            catch (Exception)
             {
                 throw;
             }
@@ -432,14 +475,14 @@ namespace Jiranator
         {
             get
             {
-                return JiraAccess.LinkOnBoard + Key;
+                return JiraAccess.LinkOnBoard(Source) + Key;
             }
         }
         public string LinkDirect
         {
             get
             {
-                return JiraAccess.LinkDirect + Key;
+                return JiraAccess.LinkDirect(Source) + Key;
             }
         }
         public List<string> Sprints { get; private set; } = new List<string>();
@@ -483,6 +526,7 @@ namespace Jiranator
         }
 
         public JiraIssue ParentIssue { get; internal set; }
+        public JiraSourceEnum Source { get; private set; } = JiraSourceEnum.SDLC;
 
         public static string ConvertToUrl(string text)
         {
@@ -550,8 +594,9 @@ namespace Jiranator
 
         #region Static Members
 
-        public static string IssueTypeField = "issuetype";
         public static string StoryPointField = "customfield_10004";
+        public static string EpicLinkField = "customfield_10008";
+        public static string EpicStatusField = "customfield_10010";
         public static string SprintField = "customfield_10007";
 
         #endregion
@@ -572,7 +617,12 @@ namespace Jiranator
             }
         }
         public List<JiraIssue> Issues { get; set; }
-        internal static JiraSprint Parse(JObject json)
+        internal static JiraSprint Parse(string str)
+        {
+            return Parse(JObject.Parse(str));
+        }
+
+        private static JiraSprint Parse(JObject json)
         {
             var rv = new JiraSprint();
             //rv.Total = (int) json["total"];
