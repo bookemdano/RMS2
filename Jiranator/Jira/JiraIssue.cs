@@ -603,9 +603,9 @@ namespace Jiranator
 
     }
 
-    public class JiraSprint
+    public class JiraSet
     {
-        public JiraSprint()
+        public JiraSet()
         {
             Issues = new List<JiraIssue>();
         }
@@ -617,15 +617,18 @@ namespace Jiranator
             }
         }
         public List<JiraIssue> Issues { get; set; }
-        internal static JiraSprint Parse(string str)
+        internal static JiraSet Parse(string str)
         {
             return Parse(JObject.Parse(str));
         }
 
-        private static JiraSprint Parse(JObject json)
+        private static JiraSet Parse(JObject json)
         {
-            var rv = new JiraSprint();
-            //rv.Total = (int) json["total"];
+            var rv = new JiraSet();
+            var total = (int)json["total"];
+            var max = (int)json["maxResults"];
+            if (total == max)
+                throw new Exception("Results maxed out. There may be more in Jira.");
             var issues = json["issues"];
             var jIssues = new List<JiraIssue>();
             foreach (var issue in issues)
@@ -646,7 +649,7 @@ namespace Jiranator
             return rv;
         }
 
-        internal void Merge(JiraSprint jiraSprint)
+        internal void Merge(JiraSet jiraSprint)
         {
             if (jiraSprint == null)
             {
@@ -677,7 +680,7 @@ namespace Jiranator
             }
             return rv;
         }
-        public void UpdateOldStatus(JiraSprint old)
+        public void UpdateOldStatus(JiraSet old)
         {
             if (old.Issues.Count() > 0)
             {

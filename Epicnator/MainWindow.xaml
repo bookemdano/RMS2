@@ -15,8 +15,8 @@
         <StackPanel Orientation="Horizontal">
             <TextBlock Margin="5">Project:</TextBlock>
             <TextBox Name="entProject" Margin="5" Width="50">AP</TextBox>
-            <Button Click="btnGo_Click" Margin="5" Width="75">Go</Button>
-            <Button Click="btnCopy_Click" Margin="5" Width="75">Copy</Button>
+            <Button Name="btnGo" Click="btnGo_Click" Margin="5" Width="75">Go</Button>
+            <Button Name="btnCopy" Click="btnCopy_Click" Margin="5" Width="75" IsEnabled="False">Copy</Button>
         </StackPanel>
         <ListBox Name="lst" Grid.Row="1"/>
     </Grid>
