@@ -1,8 +1,9 @@
-﻿<Window x:Class="Jiranator.MainWindow"
+﻿<Window
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:System="clr-namespace:System;assembly=mscorlib" x:Class="Jiranator.MainWindow"
         DataContext="{Binding RelativeSource={RelativeSource Self}}"
-        Title="Rawwwrr" Height="1024" Width="768" Icon="Icon1.ico" Loaded="Window_Loaded" SizeChanged="Size_Changed">
+        Title="Rawwwrr" Height="768" Width="768" Icon="Icon1.ico" Loaded="Window_Loaded" SizeChanged="Size_Changed">
     <Window.Resources>
         <ContextMenu x:Key="IssueContextMenu">
             <MenuItem Header="Open" Click="btnOpen_Click" FontWeight="Bold" />
@@ -19,44 +20,59 @@
     </Window.Resources>
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="532*"/>
-            <ColumnDefinition Width="185*"/>
-            <ColumnDefinition Width="70"/>
-            <ColumnDefinition Width="15"/>
-            <ColumnDefinition Width="15"/>
-            <ColumnDefinition Width="15"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="175"/>
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="35"/>
             <RowDefinition Height="35"/>
+            <RowDefinition Height="35"/>
             <RowDefinition Height="5*"/>
+            <RowDefinition Height="35"/>
             <RowDefinition Height="5*"/>
             <RowDefinition Height="35"/>
         </Grid.RowDefinitions>
-        <TextBox Name="entSprint"  
-                 Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Margin="5,6,5,5"
-                 PreviewKeyDown="entSprint_PreviewKeyDown" >Sprint 20</TextBox>
-        <TextBox Name="entFilter" 
-                 Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Margin="5,6,5,5"
-                 TextChanged="entFilter_TextChanged" 
-                 PreviewKeyDown="entFilter_PreviewKeyDown" />
-        <Button Name="btnUpdate"  Grid.Row="0" Grid.Column="2" HorizontalAlignment="Stretch"  Click="btnUpdate_Click" Margin="5,6,5,5">Update</Button>
-        <Button Click="btnPlanning_Click"  Grid.Row="0" Grid.Column="3" Margin="0,6,0,5">P</Button>
-        <Button Click="btnWorking_Click"  Grid.Row="0" Grid.Column="4" Margin="0,6,0,5">W</Button>
-        <Button Click="btnHelp_Click"  Grid.Row="0" Grid.Column="5" Margin="0,6,0,5">?</Button>
-        <Button Name="btnFind"  Grid.Row="1" Grid.Column="2" Click="btnFind_Click" Margin="5,5,5,6">Find</Button>
-        <Button Click="btnClear_Click" Grid.Row="1" Grid.Column="3" Grid.ColumnSpan="3" Margin="5,5,5,6">Clear</Button>
-        <!-- 
-        <TextBox Name="ent" Margin="10,53,106,0" Height="24" VerticalAlignment="Top">MOB-539</TextBox>
-        <Button Click="btnGet_Click" Margin="0,53,10,0" Height="24" VerticalAlignment="Top" HorizontalAlignment="Right" Width="79">Get</Button>
-        -->
-        <ListView Name="lstIssues" ItemsSource="{Binding Issues}" SelectionMode="Extended"  GridViewColumnHeader.Click="Header_Click" Grid.Row="2" Grid.ColumnSpan="6">
+        <TextBox x:Name="entSprint"  
+			Grid.Row="0" Grid.Column="0" Margin="5,6,5,5"
+			PreviewKeyDown="entSprint_PreviewKeyDown" Text="Sprint 20" />
+        <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="1">
+            <CheckBox x:Name="chkAutoRefresh" Click="chkShow_Click" Margin="0,0,-5,0"/>
+            <Button x:Name="btnUpdate" Click="btnUpdate_Click" Content="Update"/>
+            <Button Click="btnPlanning_Click"  Content="Plan"/>
+            <Button Click="btnWorking_Click"  Content="Work"/>
+            <Button Click="btnHelp_Click" Width="24" Content="?"/>
+        </StackPanel>
+        <TextBox x:Name="entFilter" 
+			Grid.Row="1" Grid.Column="0" Margin="5,6,5,5"
+			TextChanged="entFilter_TextChanged" 
+			PreviewKeyDown="entFilter_PreviewKeyDown" />
+        <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.Column="1">
+            <Button Click="btnFindOld_Click" >Find SDLC</Button>
+            <Button Click="btnFindNew_Click" >Find Omni</Button>
+            <Button Click="btnClear_Click" Content="Clear"/>
+        </StackPanel>
+        <StackPanel Grid.Row="2" HorizontalAlignment="Right" Grid.ColumnSpan="2" Orientation="Horizontal">
+            <CheckBox x:Name="chkShowSubtasks" Click="chkShow_Click" Content="Show Subtasks"/>
+            <ComboBox x:Name="cmbShowByStatus" VerticalAlignment="Center">
+                <CheckBox x:Name="chkShowResolved" Click="chkShow_Click" Content="Show Resolved"/>
+                <CheckBox x:Name="chkShowTesting" Click="chkShow_Click" Content="Show Testing"/>
+                <CheckBox x:Name="chkShowOnHold" Click="chkShow_Click" Content="Show OnHold"/>
+                <CheckBox x:Name="chkShowOther" Click="chkShow_Click" Content="Show Other"/>
+                <ComboBoxItem>-legion-</ComboBoxItem>
+                <Button Click="btnShowAll_Click" Width="90" Content="All"/>
+            </ComboBox>
+            <ComboBox x:Name="cmbCompare" SelectionChanged="cmbCompare_SelectionChanged" VerticalAlignment="Center">
+                <ComboBoxItem>Status</ComboBoxItem>
+            </ComboBox>
+        </StackPanel>
+        <ListView x:Name="lstIssues" ItemsSource="{Binding Issues}" SelectionMode="Extended"  ButtonBase.Click="Header_Click" Grid.Row="3" Grid.ColumnSpan="6" >
             <ListView.ItemContainerStyle>
-                <Style TargetType="ListViewItem">
+                <Style TargetType="{x:Type ListViewItem}">
                     <Setter Property="ContextMenu" Value="{StaticResource IssueContextMenu}" />
                     <Setter Property="FontWeight" Value="{Binding FontWeight}"/>
                     <Setter Property="Foreground" Value="{Binding Foreground}"/>
-                    <EventSetter Event="MouseDoubleClick" Handler="lstIssues_DoubleClick"/>
+                    <EventSetter Event="Control.MouseDoubleClick" Handler="lstIssues_DoubleClick"/>
+                    <Setter Property="ToolTip" Value="{Binding ToolTip}"/>
                 </Style>
             </ListView.ItemContainerStyle>
             <ListView.View>
@@ -77,27 +93,22 @@
                 </GridView>
             </ListView.View>
         </ListView>
-        <Canvas Name="canvas" Grid.Row="3" Grid.ColumnSpan="6"/>
-        <StackPanel Orientation="Horizontal" Grid.Row="4"  Grid.ColumnSpan="6">
-            <CheckBox x:Name="chkAutoRefresh" Click="chkShow_Click">Auto Update</CheckBox>
-            <CheckBox x:Name="chkShowSubtasks" Click="chkShow_Click">Show Subtasks</CheckBox>
-            <ComboBox Name="cmbShowByStatus" VerticalAlignment="Center">
-                <CheckBox x:Name="chkShowResolved" Click="chkShow_Click">Show Resolved</CheckBox>
-                <CheckBox x:Name="chkShowTesting" Click="chkShow_Click">Show Testing</CheckBox>
-                <CheckBox x:Name="chkShowOnHold" Click="chkShow_Click">Show OnHold</CheckBox>
-                <CheckBox x:Name="chkShowOther" Click="chkShow_Click">Show Other</CheckBox>
-                <TextBlock Text="-legion-" IsEnabled="False"/>
-                <Button Click="btnShowAll_Click">-All-</Button>
+        <StackPanel Orientation="Horizontal" Grid.Row="4"  Grid.ColumnSpan="6" HorizontalAlignment="Right">
+            <ComboBox x:Name="cmbChartType" SelectionChanged="cmbChartType_SelectionChanged" VerticalAlignment="Center">
+                <ComboBoxItem>Burndown</ComboBoxItem>
+                <ComboBoxItem>Ball</ComboBoxItem>
             </ComboBox>
-            <ToggleButton x:Name="tglChartType" Click="tglShow_Click" Margin="5">Chart Type</ToggleButton>
-            <CheckBox Name="chkChartStoryPoints" Click="chkChart_Click">SPs</CheckBox>
-            <CheckBox Name="chkChartTasks" Click="chkChart_Click">Tasks</CheckBox>
-            <Button Click="btnExport_Click">Export</Button>
-            <Button Click="btnClean_Click">Clean</Button>
-            <Button Click="btnTest_Click">Test</Button>
-            <ComboBox Name="cmbCompare" SelectionChanged="cmb_SelectionChanged" VerticalAlignment="Center">Status</ComboBox>
-            <Label Name="staTotals" >Totals</Label>
-            <Label Name="sta" MouseDoubleClick="staStatus_MouseDoubleClick" ToolTipOpening="sta_ToolTipOpening" ToolTip="Status">Status</Label>
+            <CheckBox x:Name="chkChartStoryPoints" Click="chkChart_Click" Content="SPs"/>
+            <CheckBox x:Name="chkChartTasks" Click="chkChart_Click" Content="Tasks"/>
+        </StackPanel>
+        <Canvas x:Name="canvas" Grid.Row="5" Grid.ColumnSpan="6"/>
+        <StackPanel Orientation="Horizontal" Grid.Row="6"  Grid.ColumnSpan="6">
+            <Button Click="btnShowOmni_Click">Add Omni</Button>
+            <Button Click="btnTest_Click" Content="Test"/>
+            <Button Click="btnExport_Click" Content="Export"/>
+            <Button Click="btnClean_Click" Content="Clean"/>
+            <Label x:Name="staTotals" Content="Totals" VerticalAlignment="Center"/>
+            <Label x:Name="sta" ToolTipOpening="sta_ToolTipOpening" ToolTip="Status" Content="Status" VerticalAlignment="Center"/>
         </StackPanel>
     </Grid>
 </Window>

@@ -47,6 +47,9 @@ namespace Jiranator
 
         static public Color GetForeground(JiraIssue issue)
         {
+            if (issue.Source == JiraSourceEnum.Omnitracs)
+                return Colors.Blue;
+
             var delta = issue.CalcedStatus - issue.OldCalcedStatus;
             if (delta > 0)
                 return Colors.Green;

@@ -525,6 +525,16 @@ namespace Jiranator
             }
         }
 
+        public string ToolTip
+        {
+            get
+            {
+                if (SubTasks.Count() == 0)
+                    return Status.ToString();
+                var rv = string.Join(Environment.NewLine, SubTasks.Select(s => s.Key + ":" + s.CalcedStatus + ", " + s.Summary));
+                return rv;
+            }
+        }
         public JiraIssue ParentIssue { get; internal set; }
         public JiraSourceEnum Source { get; private set; } = JiraSourceEnum.SDLC;
 

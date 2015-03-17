@@ -19,7 +19,7 @@ namespace Jiranator
             {
                 var str = ControlHelper.ReadString("entSprint");
                 var key = new SprintKey(str);
-                JiraHttpAccess.GetLive(key.Project, key.Sprint, false);
+                JiraHttpAccess.GetSprintLive(key.Project, key.Sprint, false);
                 Shutdown();
             }
         }

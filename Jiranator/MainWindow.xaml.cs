@@ -6,7 +6,6 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
@@ -36,7 +35,7 @@ namespace Jiranator
             ControlHelper.Read(chkShowSubtasks);
             ControlHelper.Read(chkShowTesting);
             ControlHelper.Read(chkShowOnHold);
-            ControlHelper.Read(tglChartType);
+            ControlHelper.Read(cmbChartType);
             ControlHelper.Read(chkChartStoryPoints);
             ControlHelper.Read(chkChartTasks);
             UpdateShowByStatus();
@@ -90,7 +89,7 @@ namespace Jiranator
             if (nChecked == 0)
                 cmbShowByStatus.Text = "-None-";
             else if (nChecked == nChecks)
-                cmbShowByStatus.Text = "-All-";
+                cmbShowByStatus.Text = "All";
             else if (nChecked > 1)
                 cmbShowByStatus.Text = "-legion-";
             else
@@ -160,23 +159,23 @@ namespace Jiranator
 
             return rv;
         }
-        JiraIssue GetIssue(string key)
+        JiraIssue GetIssue(JiraSourceEnum source, string key)
         {
-            var str = HttpAccess.HttpGet(JiraAccess.GetIssueJsonUri(key), true);
+            var str = HttpAccess.HttpGet(source, JiraAccess.GetIssueJsonUri(source, key), true);
             if (str == null)
                 return null;
-            return JiraIssue.Parse(JObject.Parse(str));
+            return JiraIssue.Parse(str);
 
         }
 
-        List<JiraIssue> FindIssues(string text)
+        List<JiraIssue> FindIssues(JiraSourceEnum source, string text)
         {
             string url;
             if (IsIssueKey(text))
-                url = JiraAccess.FindIssuesUri(text);
+                url = JiraAccess.FindIssuesUri(source, text);
             else
-                url = JiraAccess.SearchIssuesUri(text);
-            var str = HttpAccess.HttpGet(url, true);
+                url = JiraAccess.SearchIssuesUri(source, text);
+            var str = HttpAccess.HttpGet(source, url, true);
             if (str == null)
                 return null;
             try
@@ -188,9 +187,9 @@ namespace Jiranator
                 // just try it
             }
 
-            var jiraSprint = JiraSprint.Parse(JObject.Parse(str));
+            var jiraSet = JiraSet.Parse(str);
 
-            return jiraSprint.Issues;
+            return jiraSet.Issues;
 
         }
         private void btnUpdate_Click(object sender, RoutedEventArgs e)
@@ -217,7 +216,7 @@ namespace Jiranator
 
         void bw_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
-            _jiraSprint = e.Result as JiraSprint;
+            _jiraSet = e.Result as JiraSet;
             RefreshIssueList(false);
             btnUpdate.IsEnabled = true;
             btnUpdate.Foreground = Brushes.Black;
@@ -233,29 +232,41 @@ namespace Jiranator
 
         IEnumerable<SprintKey> GetSprintList(string sprintText)
         {
-            IList<SprintKey> rv;
-            if (sprintText.Contains(","))
+            IList<SprintKey> rv = null;
+            try
             {
-                rv = sprintText.Split(",".ToCharArray()).Select(s => new SprintKey(s.Trim())).ToList();
+                if (sprintText.Contains(","))
+                {
+                    rv = sprintText.Split(",".ToCharArray()).Select(s => new SprintKey(s.Trim())).ToList();
+                }
+                else if (sprintText.Contains("*"))
+                {
+                    rv = new List<SprintKey>();
+                    for (int i = 1; i <= 9; i++)
+                        rv.Add(new SprintKey(sprintText.Replace("*", i.ToString())));
+                }
+                else if (sprintText.Contains("-"))
+                {
+                    var parts = sprintText.Split(" -".ToCharArray());
+                    var project = parts[0];
+                    var start = int.Parse(parts[parts.Count() - 2]);
+                    var end = int.Parse(parts[parts.Count() - 1]);
+                    rv = new List<SprintKey>();
+                    for (int i = start; i <= end; i++)
+                        rv.Add(new SprintKey(project, parts[1] + " " + i));
+                }
             }
-            else if (sprintText.Contains("*"))
+            catch(Exception exc)
             {
-                rv = new List<SprintKey>();
-                for (int i = 1; i <= 9; i++)
-                    rv.Add(new SprintKey(sprintText.Replace("*", i.ToString())));
+                //sta.Content = "Sprint parse error " + exc.Message;
             }
-            else if (sprintText.Contains("-"))
+
+            finally
             {
-                var parts = sprintText.Split(" -".ToCharArray());
-                var project = parts[0];
-                var start = int.Parse(parts[parts.Count() - 2]);
-                var end = int.Parse(parts[parts.Count() - 1]);
-                rv = new List<SprintKey>();
-                for (int i = start; i <= end; i++)
-                    rv.Add(new SprintKey(project, parts[1] + " " + i));
+                if (rv == null)
+                    rv = new List<SprintKey>() { new SprintKey(sprintText) };
             }
-            else
-                rv = new List<SprintKey>() { new SprintKey(sprintText) };
+
             return rv;
         }
 
@@ -268,34 +279,34 @@ namespace Jiranator
             }
         }
 
-        private JiraSprint GetIssues(BackgroundWorker bw, string sprintText, LoadEnum latest, LoadEnum old)
+        private JiraSet GetIssues(BackgroundWorker bw, string sprintText, LoadEnum latest, LoadEnum old)
         {
             var parts = GetSprintList(sprintText);
 
-            var jiraSprintOld = new JiraSprint();
+            var jiraSetOld = new JiraSet();
 
             if (parts.Count() == 1)
             {
                 var single = parts.First();
-                jiraSprintOld.Issues = new List<JiraIssue>();
-                jiraSprintOld.Merge(GetJiraSprint(bw, single, old));
+                jiraSetOld.Issues = new List<JiraIssue>();
+                jiraSetOld.Merge(GetJiraSet(bw, single, old));
             }
-            var jiraSprint = new JiraSprint();
-            jiraSprint.Issues = new List<JiraIssue>();
+            var jiraSet = new JiraSet();
+            jiraSet.Issues = new List<JiraIssue>();
             foreach (var part in parts)
-                jiraSprint.Merge(GetJiraSprint(bw, part, latest));
+                jiraSet.Merge(GetJiraSet(bw, part, latest));
 
             if (parts.Count() == 1)
-                jiraSprint.UpdateOldStatus(jiraSprintOld);
+                jiraSet.UpdateOldStatus(jiraSetOld);
             else
                 FileUtils.Log("Old not found");
-            return jiraSprint;
+            return jiraSet;
         }
 
-        JiraSprint _jiraSprint;
+        JiraSet _jiraSet;
 
         DateTimeOffset _lastLive = DateTimeOffset.MinValue;
-        private JiraSprint GetJiraSprint(BackgroundWorker bw, SprintKey sprintKey, LoadEnum load)
+        private JiraSet GetJiraSet(BackgroundWorker bw, SprintKey sprintKey, LoadEnum load)
         {
             try
             {
@@ -323,7 +334,7 @@ namespace Jiranator
                 {
                     //str = HttpGet(_latestApi + @"/search?jql=project=MOB AND Sprint='Sprint 16' and issuetype not in (subTaskIssueTypes())&maxResults=200&fields=parent,summary,subtasks,assignee," + JiraIssue.IssueTypeField);
                     dt = DateTimeOffset.Now;
-                    str = JiraHttpAccess.GetLive(project, sprint, false);
+                    str = JiraHttpAccess.GetSprintLive(project, sprint, false);
                 }
 
                 else
@@ -334,23 +345,23 @@ namespace Jiranator
                     }
                     catch (IOException ioexc)
                     {
-                        ReportProgress(bw, "GetJiraSprint(" + load + ")" + " Exception: " + ioexc.Message);
-                        return new JiraSprint() { ErrorStatus = "Load: " + load + " Exception: " + ioexc.Message };
+                        ReportProgress(bw, "GetJiraSet(" + load + ")" + " Exception: " + ioexc.Message);
+                        return new JiraSet() { ErrorStatus = "Load: " + load + " Exception: " + ioexc.Message };
                     }
                 }
-                var jiraSprint = JiraSprint.Parse(JObject.Parse(str));
-                jiraSprint.RetrieveTime = dt;
-                jiraSprint.SetSprintName(sprintKey);
+                var jiraSet = JiraSet.Parse(str);
+                jiraSet.RetrieveTime = dt;
+                jiraSet.SetSprintName(sprintKey);
 
                 if (load == LoadEnum.LiveAlways || load == LoadEnum.LiveOnlyIfOld || load == LoadEnum.Latest)
                     _lastLive = dt;
 
-                return jiraSprint;
+                return jiraSet;
             }
             catch (Exception e)
             {
-                ReportProgress(bw, "GetJiraSprint(" + load + ") Exception " + e.Message);
-                return new JiraSprint() { ErrorStatus = "Load: " + load + " Exception: " + e.Message };
+                ReportProgress(bw, "GetJiraSet(" + load + ") Exception " + e.Message);
+                return new JiraSet() { ErrorStatus = "Load: " + load + " Exception: " + e.Message };
             }
         }
 
@@ -374,7 +385,7 @@ namespace Jiranator
         {
             get
             {
-                return tglChartType.IsChecked == true;
+                return cmbChartType.Text == "Ball";
             }
         }
 
@@ -414,19 +425,19 @@ namespace Jiranator
         private void RefreshIssueList(bool filterChangeOnly)
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            if (_jiraSprint == null || _jiraSprint.Issues == null)
+            if (_jiraSet == null || _jiraSet.Issues == null)
             {
                 Issues.Clear();
                 return;
             }
 
-            if (_jiraSprint.Key == null)
-                _jiraSprint.Key = new SprintKey(entSprint.Text);
+            if (_jiraSet.Key == null)
+                _jiraSet.Key = new SprintKey(entSprint.Text);
 
             if (!filterChangeOnly)
                 UpdateStatsForOld();
 
-            var issues = RefreshIssues(_jiraSprint, _stats, _filter, ShowSubtasks, ShowStatus);
+            var issues = RefreshIssues(_jiraSet, _stats, _filter, ShowSubtasks, ShowStatus);
             if (!filterChangeOnly || IssuesChanged(issues))
             {
                 Issues = issues;
@@ -471,25 +482,25 @@ namespace Jiranator
         private void UpdateStatsForOld()
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            _stats = JiraAccessFile.ReadStats(_jiraSprint);
+            _stats = SprintStats.ReadStats(_jiraSet);
             if (_logSubSpeeds)
                 FileUtils.Log("Stats", sw);
             UpdateOlds();
             if (_logSubSpeeds)
                 FileUtils.Log("Olds", sw);
-            cmbCompare.Text = _jiraSprint.RetrieveTime.ToString(JiraSprint.DateFormatString) + " v. " + _jiraSprint.OldRetrieveTime.ToString(JiraSprint.DateFormatString);
-            sta.Content = _jiraSprint.SprintStatus + " v. " + _jiraSprint.OldSprintStatus;
+            cmbCompare.Text = _jiraSet.RetrieveTime.ToString(JiraSet.DateFormatString) + " v. " + _jiraSet.OldRetrieveTime.ToString(JiraSet.DateFormatString);
+            sta.Content = _jiraSet.SprintStatus + " v. " + _jiraSet.OldSprintStatus;
             if (_logSubSpeeds)
                 FileUtils.Log("sta.Text", sw);
             UpdateTotals();
         }
 
-        private static ObservableCollection<JiraIssueViewModel> RefreshIssues(JiraSprint jiraSprint, SprintStats stats, string filter, bool showSubtasks, ShowStatusEnum showStatus)
+        private static ObservableCollection<JiraIssueViewModel> RefreshIssues(JiraSet jiraSet, SprintStats stats, string filter, bool showSubtasks, ShowStatusEnum showStatus)
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
 
             var rv = new ObservableCollection<JiraIssueViewModel>();
-            foreach (var issue in jiraSprint.Issues)   //.Where(i => i.IsSubtask == false))
+            foreach (var issue in jiraSet.Issues)   //.Where(i => i.IsSubtask == false))
             {
                 try
                 {
@@ -549,7 +560,7 @@ namespace Jiranator
         private void UpdateTotals()
         {
             //var totalResolvedPoints = resolveds.Sum(i => i.StoryPoints);
-            staTotals.Content = new SprintStat(_jiraSprint, SprintStat.SpecialEnum.Current).ToString();
+            staTotals.Content = new SprintStat(_jiraSet, SprintStat.SpecialEnum.Current).ToString();
         }
 
         public static string[] SplitLinesDeep(string str)
@@ -658,23 +669,25 @@ namespace Jiranator
         private void btnEdit_Click(object sender, RoutedEventArgs e)
         {
             var issues = SelectedIssues;
+            if (issues.Any(i => i.Source == JiraSourceEnum.Omnitracs))
+                return; // can't edit new Jira stuff
             var rv = new EditDetails(issues);
             if (rv.ShowDialog() != true)
                 return;
             if (rv.Assignee != null)
             {
                 foreach (var issue in issues)
-                    HttpAccess.HttpPut(JiraAccess.GetIssueUri(issue.Key), JiraAccess.GetAssignBody(rv.Assignee));
+                    HttpAccess.HttpPut(JiraAccess.GetIssueUri(issue.Source, issue.Key), JiraAccess.GetAssignBody(rv.Assignee));
             }
             if (rv.Components != null)
             {
                 foreach (var issue in issues)
-                    HttpAccess.HttpPut(JiraAccess.GetIssueUri(issue.Key), JiraAccess.GetComponentBody(rv.Components));
+                    HttpAccess.HttpPut(JiraAccess.GetIssueUri(issue.Source, issue.Key), JiraAccess.GetComponentBody(rv.Components));
             }
             if (rv.Version != null)
             {
                 foreach (var issue in issues)
-                    HttpAccess.HttpPut(JiraAccess.GetIssueUri(issue.Key), JiraAccess.GetFixVersionBody(rv.Version));
+                    HttpAccess.HttpPut(JiraAccess.GetIssueUri(issue.Source, issue.Key), JiraAccess.GetFixVersionBody(rv.Version));
             }
             NewStuff();
         }
@@ -733,7 +746,7 @@ namespace Jiranator
 
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            _jiraSprint = GetIssues(null, entSprint.Text, LoadEnum.Latest, LoadEnum.Yesterday);
+            _jiraSet = GetIssues(null, entSprint.Text, LoadEnum.Latest, LoadEnum.Yesterday);
             RefreshIssueList(false);
             Update(LoadEnum.LiveOnlyIfOld); // kick off async refresh
         }
@@ -747,7 +760,7 @@ namespace Jiranator
         {
             if (chkChartStoryPoints.IsChecked != true && chkChartTasks.IsChecked != true)
             {
-                canvas.Visibility = Visibility.Collapsed;
+                canvas.Visibility = Visibility.Hidden;
                 Grid.SetRowSpan(lstIssues, 2);
                 return;
             }
@@ -785,9 +798,12 @@ namespace Jiranator
             GraphIt();
         }
 
-        private void tglShow_Click(object sender, RoutedEventArgs e)
+        private void cmbChartType_SelectionChanged(object sender, RoutedEventArgs e)
         {
-            ControlHelper.Save(tglChartType);
+            if (cmbChartType.SelectedItem == null)
+                return;
+            cmbChartType.Text = (cmbChartType.SelectedItem as ComboBoxItem)?.Content?.ToString();
+            ControlHelper.Save(cmbChartType);
 
             RefreshIssueList(false);
         }
@@ -810,7 +826,7 @@ namespace Jiranator
             var sw = System.Diagnostics.Stopwatch.StartNew();
             _filter = entFilter.Text;
             if (string.IsNullOrWhiteSpace(_filter))
-                _jiraSprint.Issues.RemoveAll(i => string.IsNullOrWhiteSpace(i.Sprint));
+                _jiraSet.Issues.RemoveAll(i => string.IsNullOrWhiteSpace(i.Sprint));
 
             RefreshIssueList(true);
 
@@ -819,19 +835,19 @@ namespace Jiranator
 
         private void btnClean_Click(object sender, RoutedEventArgs e)
         {
-            JiraAccessFile.CleanUp();
+            var nDeleted = JiraAccessFile.CleanUp();
+            MessageBox.Show(nDeleted.ToString() + " files deleted");
         }
 
-        private void btnFind_Click(object sender, RoutedEventArgs e)
+        private void FindFromFilter(JiraSourceEnum source)
         {
             if (string.IsNullOrWhiteSpace(entFilter.Text))
                 return;
 
-            var issues = FindIssues(entFilter.Text);
+            var issues = FindIssues(source, entFilter.Text);
             if (issues == null)
                 return;
-            foreach (var issue in issues)
-                _jiraSprint.Issues.Add(issue);
+            AddIssues(issues);
             RefreshIssueList(true);
             sta.Content = "Searched for " + entFilter.Text;
         }
@@ -992,7 +1008,7 @@ namespace Jiranator
                 return;
             var issues = SelectedIssues;
             foreach (var issue in issues.Where(i => !i.IsSubtask))
-                HttpAccess.HttpPost(JiraAccess.GetIssuesUri(), JiraAccess.GetNewSubtaskBody(project, issue, rv.Summary, rv.Estimate, rv.Assignee));
+                HttpAccess.HttpPost(JiraAccess.GetIssuesUri(issue.Source), JiraAccess.GetNewSubtaskBody(project, issue, rv.Summary, rv.Estimate, rv.Assignee));
 
             NewStuff();
         }
@@ -1002,8 +1018,8 @@ namespace Jiranator
             var issues = SelectedIssues;
             foreach (var issue in issues.Where(i => !i.IsSubtask))
             {
-                HttpAccess.HttpPost(JiraAccess.GetIssuesUri(), JiraAccess.GetNewSubtaskBody(Project, issue, "Implement", null, null));
-                HttpAccess.HttpPost(JiraAccess.GetIssuesUri(), JiraAccess.GetNewSubtaskBody(Project, issue, "Doc", null, "lstevens"));
+                HttpAccess.HttpPost(JiraAccess.GetIssuesUri(issue.Source), JiraAccess.GetNewSubtaskBody(Project, issue, "Implement", null, null));
+                HttpAccess.HttpPost(JiraAccess.GetIssuesUri(issue.Source), JiraAccess.GetNewSubtaskBody(Project, issue, "Doc", null, "lstevens"));
             }
 
             NewStuff();
@@ -1017,11 +1033,47 @@ namespace Jiranator
                 btnUpdate.Foreground = Brushes.OrangeRed;
         }
 
+        private void btnShowOmni_Click(object sender, RoutedEventArgs e)
+        {
+            var issues = new List<JiraIssue>();
+            foreach (var issue in Issues.Where(i => i.Summary.StartsWith("RA-") || i.Summary.StartsWith("RTS-")))
+            {
+                var summary = issue.Summary;
+                var parts = summary.Split(" -".ToCharArray());
+                var key = parts[0] + "-" + parts[1];
+                if (IsIssueKey(key))
+                {
+                    issues.AddRange(FindIssues(JiraSourceEnum.Omnitracs, key));
+                }
+            }
+            if (issues.Count() == 0)
+                return;
+
+            AddIssues(issues);
+
+            RefreshIssueList(true);
+            sta.Content = "Added " + issues.Count() + " from new Jira";
+        }
         private void btnTest_Click(object sender, RoutedEventArgs e)
         {
-            btnText_Click(sender, e);
-            //TestVoice();
+            //var dlg = new PickList();
+            //dlg.ShowDialog();
+
+            //btnText_Click(sender, e);
+            TestVoice();
             //SendVoiceMessage(rv.Response, "Greetings, friend. Do you wish to look as happy as me? Well, you've got the power inside you right now. So use it. And send one dollar to Happy Dude, 742 Evergreen Terrace, Springfield. Don't delay! Eternal happiness is just a dollar away.");
+        }
+
+
+        private void AddIssues(IEnumerable<JiraIssue> issues)
+        {
+            foreach (var issue in issues)
+                AddIssue(issue);
+        }
+        private void AddIssue(JiraIssue issue)
+        {
+            if (!_jiraSet.Issues.Any(i => i.Key == issue.Key))
+                _jiraSet.Issues.Add(issue);
         }
 
         private static void TestVoice()
@@ -1123,13 +1175,7 @@ namespace Jiranator
         }
         #endregion
 
-        private void staStatus_MouseDoubleClick(object sender, MouseButtonEventArgs e)
-        {
-            var dlg = new PickList();
-            dlg.ShowDialog();
-        }
-
-        private void cmb_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        private void cmbCompare_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (e.AddedItems.Count != 1)
                 return;
@@ -1170,7 +1216,7 @@ namespace Jiranator
         {
             if (e.Key == Key.Enter)
             {
-                btnFind_Click(null, null);
+                FindFromFilter(JiraSourceEnum.SDLC);
             }
         }
 
@@ -1186,6 +1232,21 @@ namespace Jiranator
         {
             sta.ToolTip = sta.Content;
         }
+
+        private void btnFindOld_Click(object sender, RoutedEventArgs e)
+        {
+            FindFromFilter(JiraSourceEnum.SDLC);
+        }
+
+        private void btnFindNew_Click(object sender, RoutedEventArgs e)
+        {
+            FindFromFilter(JiraSourceEnum.Omnitracs);
+        }
+
+        private void lstIssues_ToolTipOpening(object sender, ToolTipEventArgs e)
+        {
+            lstIssues.ToolTip = DateTimeOffset.Now;
+        }
     }
     public static class ControlHelper
     {
@@ -1200,6 +1261,11 @@ namespace Jiranator
             SaveString(tgl.Name, tgl.IsChecked);
         }
 
+        internal static void Save(ComboBox cmb)
+        {
+            SaveString(cmb.Name, cmb.Text);
+        }
+
         internal static void Save(CheckBox chk)
         {
             SaveString(chk.Name, chk.IsChecked);
@@ -1208,6 +1274,11 @@ namespace Jiranator
         internal static void Read(TextBox ent)
         {
             ent.Text = ReadString(ent.Name);
+        }
+
+        internal static void Read(ComboBox cmb)
+        {
+            cmb.Text = ReadString(cmb.Name);
         }
 
         internal static void Read(ToggleButton tgl)
