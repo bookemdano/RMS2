@@ -635,6 +635,11 @@ namespace Jiranator
         private static JiraSet Parse(JObject json)
         {
             var rv = new JiraSet();
+            if (json["total"] == null)
+            {
+                rv.Issues.Add(JiraIssue.Parse(json));
+                return rv;
+            }
             var total = (int)json["total"];
             var max = (int)json["maxResults"];
             if (total == max)

@@ -58,7 +58,7 @@ namespace Kanga
         }
 
         string _none = "-none-";
-
+        string _delimiter = ";";
         private void Kangate(JiraSourceEnum source, ProjectEnum project, string version, bool consoleMode)
         {
             try
@@ -94,9 +94,9 @@ namespace Kanga
                 Issues = issues.OrderBy(i => i.Key).ToList();
 
                 var outs = new List<string>();
-                outs.Add(JiraIssue.CsvHeader());
+                outs.Add(JiraIssue.Header(_delimiter));
                 foreach (var issue in Issues)
-                    outs.Add(issue.ToCsv());
+                    outs.Add(issue.ToDelimited(_delimiter));
                 _filename = "kanga " + key + " " + DateTime.Now.ToString("yyyyMMdd HHmmss") + ".csv";
                 File.WriteAllLines(_filename, outs.ToArray());
 
@@ -159,13 +159,13 @@ namespace Kanga
     }
     public class JiraIssue
     {
-        static public string CsvHeader()
+        static public string Header(string delimiter)
         {
-            return "Key,Case,Summary,Description,Status,Issue Type,Assignee,Fixed Version(s),Fixed Build #,Story,Read Me Notes,Resolution Notes";
+            return "Key" + delimiter + "Case" + delimiter + "Summary" + delimiter + "Description" + delimiter + "Status" + delimiter + "Issue Type" + delimiter + "Assignee" + delimiter + "Fixed Version(s)" + delimiter + "Fixed Build #" + delimiter + "Story" + delimiter + "Read Me Notes" + delimiter + "Resolution Notes";
         }
-        public string ToCsv()
+        public string ToDelimited(string delimiter)
         {
-            return Key + "," + CaseNumber + "," + Fixup(Summary) + "," + Fixup(Description) + "," + Status + "," + IssueType + "," + Assignee + "," + VersionsString + "," + FixedBuild + "," + Fixup(Story) + "," + Fixup(ReadMeNotes) + "," + Fixup(ResolutionNotes);
+            return Key + delimiter + CaseNumber + delimiter + Fixup(Summary) + delimiter + Fixup(Description) + delimiter + Status + delimiter + IssueType + delimiter + Assignee + delimiter + VersionsString + delimiter + FixedBuild + delimiter + Fixup(Story) + delimiter + Fixup(ReadMeNotes) + delimiter + Fixup(ResolutionNotes);
         }
         static string MinorFixup(string str)
         {
@@ -173,6 +173,7 @@ namespace Kanga
                 return null;
             var rv = str;
             rv = rv.Replace("\"", "'");
+            rv = rv.Replace(";", ",");
             rv = rv.Replace(Environment.NewLine, " ");
             return rv;
         }

@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.22310.1
+VisualStudioVersion = 14.0.22609.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Utils", "Utils\Utils.csproj", "{0183AC29-C3F9-4422-B30A-C06D55D7BB49}"
 EndProject
@@ -22,6 +22,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Normalize", "Normalize\Normalize.csproj", "{BCE4D1B6-CF26-4219-AF00-4C51157817CE}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kanga", "Kanga\Kanga.csproj", "{AE599796-E378-4CCD-8C18-CAAF20B1A5BE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Epicnator", "Epicnator\Epicnator.csproj", "{43CBF9BD-4A04-4C60-8CC5-EB5FE12507A7}"
 EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
@@ -160,6 +162,22 @@ Global
 		{AE599796-E378-4CCD-8C18-CAAF20B1A5BE}.Release|x64.Build.0 = Release|Any CPU
 		{AE599796-E378-4CCD-8C18-CAAF20B1A5BE}.Release|x86.ActiveCfg = Release|Any CPU
 		{AE599796-E378-4CCD-8C18-CAAF20B1A5BE}.Release|x86.Build.0 = Release|Any CPU
+		{43CBF9BD-4A04-4C60-8CC5-EB5FE12507A7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{43CBF9BD-4A04-4C60-8CC5-EB5FE12507A7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{43CBF9BD-4A04-4C60-8CC5-EB5FE12507A7}.Debug|ARM.ActiveCfg = Debug|Any CPU
+		{43CBF9BD-4A04-4C60-8CC5-EB5FE12507A7}.Debug|ARM.Build.0 = Debug|Any CPU
+		{43CBF9BD-4A04-4C60-8CC5-EB5FE12507A7}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{43CBF9BD-4A04-4C60-8CC5-EB5FE12507A7}.Debug|x64.Build.0 = Debug|Any CPU
+		{43CBF9BD-4A04-4C60-8CC5-EB5FE12507A7}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{43CBF9BD-4A04-4C60-8CC5-EB5FE12507A7}.Debug|x86.Build.0 = Debug|Any CPU
+		{43CBF9BD-4A04-4C60-8CC5-EB5FE12507A7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{43CBF9BD-4A04-4C60-8CC5-EB5FE12507A7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{43CBF9BD-4A04-4C60-8CC5-EB5FE12507A7}.Release|ARM.ActiveCfg = Release|Any CPU
+		{43CBF9BD-4A04-4C60-8CC5-EB5FE12507A7}.Release|ARM.Build.0 = Release|Any CPU
+		{43CBF9BD-4A04-4C60-8CC5-EB5FE12507A7}.Release|x64.ActiveCfg = Release|Any CPU
+		{43CBF9BD-4A04-4C60-8CC5-EB5FE12507A7}.Release|x64.Build.0 = Release|Any CPU
+		{43CBF9BD-4A04-4C60-8CC5-EB5FE12507A7}.Release|x86.ActiveCfg = Release|Any CPU
+		{43CBF9BD-4A04-4C60-8CC5-EB5FE12507A7}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

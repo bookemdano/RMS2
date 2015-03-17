@@ -16,6 +16,8 @@
             <MenuItem Header="Edit" Click="btnEdit_Click"/>
             <MenuItem Header="Add Subtask" Click="btnAddSubtask_Click"/>
             <MenuItem Header="Add Usuals" Click="btnAddUsuals_Click"/>
+            <Separator/>
+            <MenuItem Header="Add To SDLC" Click="btnAddFromOmni_Click"/>
         </ContextMenu>
     </Window.Resources>
     <Grid>

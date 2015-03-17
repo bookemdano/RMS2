@@ -161,7 +161,7 @@ namespace Jiranator
         }
         JiraIssue GetIssue(JiraSourceEnum source, string key)
         {
-            var str = HttpAccess.HttpGet(source, JiraAccess.GetIssueJsonUri(source, key), true);
+            var str = HttpAccess.HttpGet(JiraAccess.GetIssueJsonUri(source, key), true);
             if (str == null)
                 return null;
             return JiraIssue.Parse(str);
@@ -172,10 +172,10 @@ namespace Jiranator
         {
             string url;
             if (IsIssueKey(text))
-                url = JiraAccess.FindIssuesUri(source, text);
+                url = JiraAccess.FindIssueByKey(source, text);
             else
                 url = JiraAccess.SearchIssuesUri(source, text);
-            var str = HttpAccess.HttpGet(source, url, true);
+            var str = HttpAccess.HttpGet(url, true);
             if (str == null)
                 return null;
             try
@@ -186,7 +186,6 @@ namespace Jiranator
             {
                 // just try it
             }
-
             var jiraSet = JiraSet.Parse(str);
 
             return jiraSet.Issues;
@@ -677,17 +676,17 @@ namespace Jiranator
             if (rv.Assignee != null)
             {
                 foreach (var issue in issues)
-                    HttpAccess.HttpPut(JiraAccess.GetIssueUri(issue.Source, issue.Key), JiraAccess.GetAssignBody(rv.Assignee));
+                    HttpAccess.HttpPut(JiraAccess.IssueUri(issue.Source, issue.Key), JiraAccess.GetAssignBody(rv.Assignee));
             }
             if (rv.Components != null)
             {
                 foreach (var issue in issues)
-                    HttpAccess.HttpPut(JiraAccess.GetIssueUri(issue.Source, issue.Key), JiraAccess.GetComponentBody(rv.Components));
+                    HttpAccess.HttpPut(JiraAccess.IssueUri(issue.Source, issue.Key), JiraAccess.GetComponentBody(rv.Components));
             }
             if (rv.Version != null)
             {
                 foreach (var issue in issues)
-                    HttpAccess.HttpPut(JiraAccess.GetIssueUri(issue.Source, issue.Key), JiraAccess.GetFixVersionBody(rv.Version));
+                    HttpAccess.HttpPut(JiraAccess.IssueUri(issue.Source, issue.Key), JiraAccess.GetFixVersionBody(rv.Version));
             }
             NewStuff();
         }
@@ -1008,7 +1007,7 @@ namespace Jiranator
                 return;
             var issues = SelectedIssues;
             foreach (var issue in issues.Where(i => !i.IsSubtask))
-                HttpAccess.HttpPost(JiraAccess.GetIssuesUri(issue.Source), JiraAccess.GetNewSubtaskBody(project, issue, rv.Summary, rv.Estimate, rv.Assignee));
+                HttpAccess.HttpPost(JiraAccess.IssueUri(issue.Source), JiraAccess.GetNewSubtaskBody(project, issue, rv.Summary, rv.Estimate, rv.Assignee));
 
             NewStuff();
         }
@@ -1018,10 +1017,24 @@ namespace Jiranator
             var issues = SelectedIssues;
             foreach (var issue in issues.Where(i => !i.IsSubtask))
             {
-                HttpAccess.HttpPost(JiraAccess.GetIssuesUri(issue.Source), JiraAccess.GetNewSubtaskBody(Project, issue, "Implement", null, null));
-                HttpAccess.HttpPost(JiraAccess.GetIssuesUri(issue.Source), JiraAccess.GetNewSubtaskBody(Project, issue, "Doc", null, "lstevens"));
+                HttpAccess.HttpPost(JiraAccess.IssueUri(issue.Source), JiraAccess.GetNewSubtaskBody(Project, issue, "Implement", null, null));
+                HttpAccess.HttpPost(JiraAccess.IssueUri(issue.Source), JiraAccess.GetNewSubtaskBody(Project, issue, "Doc", null, "lstevens"));
             }
 
+            NewStuff();
+        }
+
+        private void btnAddFromOmni_Click(object sender, RoutedEventArgs e)
+        {
+            var issues = SelectedIssues;
+            foreach (var omniIssue in issues.Where(i => !i.IsSubtask))
+            {
+                var str = HttpAccess.HttpPost(JiraAccess.IssueUri(JiraSourceEnum.SDLC), JiraAccess.GetNewTaskBody(Project, omniIssue));
+                JiraAccessFile.WriteResults("new.json", str);
+                var json = JObject.Parse(str);
+                var self = (string)json["self"];
+                HttpAccess.HttpPost(self + @"/remotelink", JiraAccess.GetNewLinkBody(omniIssue));
+            }
             NewStuff();
         }
 

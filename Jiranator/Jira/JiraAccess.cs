@@ -63,11 +63,10 @@ namespace Jiranator
             return string.Format(fmt, text);
         }
 
-        internal static string FindIssuesUri(JiraSourceEnum source, string text)
+        internal static string FindIssueByKey(JiraSourceEnum source, string key)
         {
             var fmt = LatestApi(source) + @"/search?jql=issue='{0}'&maxResults=200";
-
-            return string.Format(fmt, text);
+            return string.Format(fmt, key);
         }
 
         internal static string GetSprintUri(string project, string sprint)
@@ -114,11 +113,15 @@ namespace Jiranator
             var fields = new List<string>() { "parent", "summary", "assignee", "components", "versions", "fixVersions", "status", "timetracking", JiraIssue.StoryPointField, "issuetype", JiraIssue.SprintField, JiraIssue.EpicLinkField, JiraIssue.EpicStatusField };
             return "&fields=" + string.Join(",", fields);
         }
-        internal static string GetIssueUri(JiraSourceEnum source, string key)
+        internal static string IssueUri(JiraSourceEnum source, string key)
         {
-            return LatestApi(source) + @"/issue/" + key;
+            return IssueUri(source) + @"/" + key;
         }
-        internal static string GetIssuesUri(JiraSourceEnum source)
+        internal static string RemoteLinkUri(JiraSourceEnum source, string key)
+        {
+            return IssueUri(source) + @"/" + key + @"/remotelink";
+        }
+        internal static string IssueUri(JiraSourceEnum source)
         {
             return LatestApi(source) + @"/issue";
         }
@@ -208,6 +211,48 @@ namespace Jiranator
             return rv.ToString();
         }
 
+        internal static string GetNewTaskBody(string project, JiraIssue issue)
+        {
+            dynamic newTask = new JObject();
+            /*
+            subtask.summary = "armstrong";
+            subtask.description = "described";
+            subtask.project = MakeJobj("key", project);
+            subtask.issuetype = MakeJobj("name", "Bug");
+            */
+            newTask.summary = "TEST-" + issue.Key + " " + issue.Summary;
+            newTask.description = "added by Jiranator";
+            newTask.project = MakeJobj("key", project);
+            newTask.issuetype = MakeJobj("name", "Bug");
+
+            var rv = MakeJobj("fields", newTask);
+            return rv.ToString();
+        }
+
+
+        internal static string GetNewLinkBody(JiraIssue issue)
+        {
+            dynamic newTask = new JObject();
+            /*
+            subtask.summary = "armstrong";
+            subtask.description = "described";
+            subtask.project = MakeJobj("key", project);
+            subtask.issuetype = MakeJobj("name", "Bug");
+            */
+            newTask.url = issue.LinkDirect;
+            newTask.title = "Jira Omni";
+
+            var rv = MakeJobj("object", newTask);
+            return rv.ToString();
+        }
+
+        internal static JiraSourceEnum DetermineSource(string url)
+        {
+            if (url.Contains(JiraAccess.SourceUrl(JiraSourceEnum.Omnitracs)))
+                return JiraSourceEnum.Omnitracs;
+            else
+                return JiraSourceEnum.SDLC;
+        }
     }
     static public class JiraAccessFile
     {
@@ -382,7 +427,7 @@ namespace Jiranator
     {
         public static string GetSprintLive(string project, string sprint, bool showError)
         {
-            var rv = HttpAccess.HttpGet(JiraSourceEnum.SDLC, JiraAccess.GetSprintUri(project, sprint), showError);
+            var rv = HttpAccess.HttpGet(JiraAccess.GetSprintUri(project, sprint), showError);
             //var rv = HttpAccess.HttpGet(JiraAccess.GetSprintUri(project, sprint), showError);
             //File.WriteAllLines("search.fancy.json", SplitLinesDeep(str));
             JiraAccessFile.Write(new SprintKey(project, sprint).ToFilename(), rv);
@@ -390,7 +435,7 @@ namespace Jiranator
         }
         public static string GetEpicsLive(string project, bool showError, bool saveFile = true)
         {
-            var rv = HttpAccess.HttpGet(JiraSourceEnum.SDLC, JiraAccess.GetEpicsUri(project), showError);
+            var rv = HttpAccess.HttpGet(JiraAccess.GetEpicsUri(project), showError);
             if (saveFile)
                 JiraAccessFile.Write(project + "-Epics", rv);
             return rv;
@@ -398,7 +443,7 @@ namespace Jiranator
 
         internal static string GetEpicsIssuesLive(string epicKey, bool showError, bool saveFile = true)
         {
-            var rv = HttpAccess.HttpGet(JiraSourceEnum.SDLC, JiraAccess.GetIssuesForEpicUri(epicKey), showError);
+            var rv = HttpAccess.HttpGet(JiraAccess.GetIssuesForEpicUri(epicKey), showError);
             if (saveFile)
                 JiraAccessFile.Write("Epic-" + epicKey + "-Issues", rv);
             return rv;
@@ -407,8 +452,9 @@ namespace Jiranator
 
     public static class HttpAccess
     {
-        internal static string HttpGet(JiraSourceEnum source, string url, bool showError)
+        internal static string HttpGet(string url, bool showError)
         {
+            var source = JiraAccess.DetermineSource(url);
             string result = null;
             try
             {
@@ -433,8 +479,10 @@ namespace Jiranator
 
         internal static string HttpPut(string url, string json)
         {
-            if (url.Contains(JiraAccess.SourceUrl(JiraSourceEnum.Omnitracs)))
+            var source = JiraAccess.DetermineSource(url);
+            if (source == JiraSourceEnum.Omnitracs)
                 return "Cannot edit Omnitracs Jira";
+
             try
             {
                 var request = WebRequest.Create(url)
@@ -447,7 +495,7 @@ namespace Jiranator
                     streamWriter.Write(json);
                 }
 
-                request.Headers.Add("Authorization", "Basic " + EncodedCredentials(JiraSourceEnum.SDLC));
+                request.Headers.Add("Authorization", "Basic " + EncodedCredentials(source));
                 string result = null;
                 using (var resp = request.GetResponse() as HttpWebResponse)
                 {
@@ -466,7 +514,8 @@ namespace Jiranator
 
         internal static string HttpPost(string url, string json)
         {
-            if (url.Contains(JiraAccess.SourceUrl(JiraSourceEnum.Omnitracs)))
+            var source = JiraAccess.DetermineSource(url);
+            if (source == JiraSourceEnum.Omnitracs)
                 return "Cannot edit Omnitracs Jira";
             try
             {
@@ -480,7 +529,7 @@ namespace Jiranator
                     streamWriter.Write(json);
                 }
 
-                request.Headers.Add("Authorization", "Basic " + EncodedCredentials(JiraSourceEnum.SDLC));
+                request.Headers.Add("Authorization", "Basic " + EncodedCredentials(source));
 
                 string result = null;
                 using (var resp = request.GetResponse() as HttpWebResponse)
