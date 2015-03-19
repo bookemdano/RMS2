@@ -22,6 +22,7 @@ namespace Kanga
         public MainWindow()
         {
             InitializeComponent();
+
             bool consoleMode = (Environment.GetCommandLineArgs().Length > 1);
             if (consoleMode)
             {
@@ -47,6 +48,9 @@ namespace Kanga
                 Kangate(source, project, version, consoleMode);
                 Close();
             }
+
+            ReadFromMru(cmbVersion);
+
             if (_testing)
                 Title += " TESTING";
             foreach (var e in Enum.GetNames(typeof(JiraSourceEnum)))
@@ -153,19 +157,56 @@ namespace Kanga
         {
             var source = (JiraSourceEnum)Enum.Parse(typeof(JiraSourceEnum), cmbSource.Text);
             var project = (ProjectEnum)Enum.Parse(typeof(ProjectEnum), cmbProject.Text);
-            Kangate(source, project, entVersion.Text, false);
+            AddToMru(cmbVersion.Text);
+            Kangate(source, project, cmbVersion.Text, false);
+        }
+        private void ReadFromMru(ComboBox cmb)
+        {
+            IEnumerable<string> versions = null;
+            if (File.Exists("versions.cfg"))
+                versions = File.ReadAllLines("versions.cfg");
 
+            if (versions == null || !versions.Any())
+                return;
+
+            foreach (var str in versions)
+                cmb.Items.Add(str);
+        }
+
+        void AddToMru(string str)
+        {
+            List<string> versions = null;
+            if (File.Exists("versions.cfg"))
+                versions = File.ReadAllLines("versions.cfg").ToList();
+            else
+                versions = new List<string>();
+
+            if (versions.Any() && versions[0] == str)
+                return;  // nothing to do
+
+            if (versions.Contains(str))
+                versions.Remove(str);
+
+
+            versions.Insert(0, str);
+
+            cmbVersion.Items.Clear();
+            foreach (var version in versions)
+                cmbVersion.Items.Add(version);
+            cmbVersion.Text = str;
+
+            File.WriteAllLines("versions.cfg", versions.ToArray());
         }
     }
     public class JiraIssue
     {
         static public string Header(string delimiter)
         {
-            return "Key" + delimiter + "Case" + delimiter + "Summary" + delimiter + "Description" + delimiter + "Status" + delimiter + "Issue Type" + delimiter + "Assignee" + delimiter + "Fixed Version(s)" + delimiter + "Fixed Build #" + delimiter + "Story" + delimiter + "Read Me Notes" + delimiter + "Resolution Notes";
+            return "Key" + delimiter + "Case" + delimiter + "Summary" + delimiter + "Description" + delimiter + "Status" + delimiter + "Issue Type" + delimiter + "Assignee" + delimiter + "Fixed Version(s)" + delimiter + "Fixed Build #" + delimiter + "Epic Link" + delimiter + "Story" + delimiter + "Read Me Notes" + delimiter + "Resolution Notes";
         }
         public string ToDelimited(string delimiter)
         {
-            return Key + delimiter + CaseNumber + delimiter + Fixup(Summary) + delimiter + Fixup(Description) + delimiter + Status + delimiter + IssueType + delimiter + Assignee + delimiter + VersionsString + delimiter + FixedBuild + delimiter + Fixup(Story) + delimiter + Fixup(ReadMeNotes) + delimiter + Fixup(ResolutionNotes);
+            return Key + delimiter + CaseNumber + delimiter + Fixup(Summary) + delimiter + Fixup(Description) + delimiter + Status + delimiter + IssueType + delimiter + Assignee + delimiter + VersionsString + delimiter + FixedBuild + delimiter + EpicLink + delimiter + Fixup(Story) + delimiter + Fixup(ReadMeNotes) + delimiter + Fixup(ResolutionNotes) + delimiter + EpicLink;
         }
         static string MinorFixup(string str)
         {
@@ -173,8 +214,10 @@ namespace Kanga
                 return null;
             var rv = str;
             rv = rv.Replace("\"", "'");
-            rv = rv.Replace(";", ",");
+            rv = rv.Replace(";", "-");
+            rv = rv.Replace(",", "-");
             rv = rv.Replace(Environment.NewLine, " ");
+            rv = rv.Replace("\n", " ");
             return rv;
         }
         static string Fixup(string str)
@@ -257,6 +300,8 @@ namespace Kanga
         public static string CaseField = "customfield_10002";
         public static string FixedBuildField = "customfield_10117";
         public static string StoryField = "customfield_10100";
+        public static string EpicLinkField = "customfield_10008";
+
         public string VersionsString
         {
             get
@@ -266,6 +311,7 @@ namespace Kanga
         }
 
         public string FixedBuild { get; private set; }
+        public string EpicLink{ get; private set; }
 
         public static string ArrayToString(List<string> array)
         {
@@ -286,7 +332,8 @@ namespace Kanga
                 rv.CaseNumber = Path.GetFileNameWithoutExtension(caseDir);
                 rv.ReadMeNotes = GetString(fields, ReadMeNotesField);
                 rv.ResolutionNotes = GetString(fields, ResolutionNotesField);
-                rv.IssueType = GetNameString(fields, "issuetype");;
+                rv.IssueType = GetNameString(fields, "issuetype");
+
                 //var tokens = fields.Children();
                 if (fields["status"] != null)
                 {
@@ -298,6 +345,8 @@ namespace Kanga
                 GetArrayedItem(rv.Versions, fields["fixVersions"]);
                 rv.FixedBuild = (string)fields[FixedBuildField];
                 rv.Story = (string)fields[StoryField];
+                rv.EpicLink = GetString(fields, EpicLinkField);
+
                 rv.Description = (string)fields["description"];
                 return rv;
             }
@@ -487,6 +536,7 @@ namespace Kanga
             if (!_getAllFields) // gets all fields but takes forever
             {
                 var fields = new List<string>() { "summary", "assignee", "fixVersions", "status", "issuetype"};
+                fields.Add(JiraIssue.EpicLinkField);
                 if (source == JiraSourceEnum.Omnitracs)
                 {
                     fields.Add(JiraIssue.CaseField);

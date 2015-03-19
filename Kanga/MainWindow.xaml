@@ -18,7 +18,7 @@
             <TextBlock VerticalAlignment="Center" Margin="10,0,0,0">Project:</TextBlock>
             <ComboBox Name="cmbProject" VerticalAlignment="Center"/>
             <TextBlock VerticalAlignment="Center" Margin="10,0,0,0">Version:</TextBlock>
-            <TextBox Name="entVersion" VerticalAlignment="Center" Width="100"/>
+            <ComboBox Name="cmbVersion" VerticalAlignment="Center" IsEditable="True" Width="100"/>
             <Button Click="btnGo_Click" Margin="5,0,5,0" Width="50">Go</Button>
             <TextBlock Name="staInfo"  VerticalAlignment="Center"/>
         </StackPanel>
@@ -39,6 +39,7 @@
                     <GridViewColumn Header="Assignee" DisplayMemberBinding="{Binding Assignee}"/>
                     <GridViewColumn Header="Fixed Version" DisplayMemberBinding="{Binding VersionsString}"/>
                     <GridViewColumn Header="Fixed Build #"  DisplayMemberBinding="{Binding FixedBuild}"/>
+                    <GridViewColumn Header="Epic"  DisplayMemberBinding="{Binding EpicLink}"/>
                     <GridViewColumn Header="Description" Width="500">
                         <GridViewColumn.CellTemplate>
                             <DataTemplate>
