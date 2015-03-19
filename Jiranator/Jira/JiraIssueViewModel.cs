@@ -100,38 +100,38 @@ namespace Jiranator
 
         #endregion
 
-        public string Description(bool shortForm)
+        public string Description(bool includeParent, bool includeSummary, bool includeMeta)
         {
             var rv = "";
-            if (IsSubtask)
-                rv += "-";
+            if (includeParent && IsSubtask)
+                rv += new JiraIssueViewModel(ParentIssue).Description(false, true, false) + " subtask ";
             rv += Key;
-            if (shortForm)
-                return rv;
-            rv += " [" + ShortStatus + "]";
-            if (!string.IsNullOrWhiteSpace(Summary))
+            if (includeMeta)
+                rv += " [" + ShortStatus + "]";
+            if (includeSummary && !string.IsNullOrWhiteSpace(Summary))
                 rv += " " + Summary;
-            if (!string.IsNullOrWhiteSpace(Assignee))
+            if (includeMeta && !string.IsNullOrWhiteSpace(Assignee))
                 rv += " by " + Assignee;
             return rv;
         }
-        public string HtmlDescription(bool shortForm)
+        public string HtmlDescription(bool includeParent, bool includeSummary)
         {
-            string link = "<A HREF=" + LinkDirect + ">" + Key;
-            if (!shortForm)
-                link += "-" + Summary;
-            link += "</A>";
-            return link;
+            var rv = "";
+            if (IsSubtask)
+                rv += new JiraIssueViewModel(ParentIssue).HtmlDescription(false, includeSummary) + " subtask  ";
+            
+            rv += "<A HREF=" + LinkDirect + ">" + Key;
+            if (includeSummary)
+                rv += "-" + Summary;
+            rv += "</A>";
+            return rv;
         }
 
 
         public string MailToLink()
         {
             var rv = "mailto:?subject=";
-            if (ParentIssue != null)
-                rv += new JiraIssueViewModel(ParentIssue).Description(true) + "sub ";
-
-            rv += ConvertToUrl(Description(false));
+            rv += ConvertToUrl(Description(true, true, true));
             return rv;
         }
 
@@ -139,7 +139,7 @@ namespace Jiranator
 
         public override string ToString()
         {
-            return Description(false);
+            return Description(false, true, true);
         }
 
         #endregion

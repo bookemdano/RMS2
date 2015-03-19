@@ -12,6 +12,7 @@
             <Separator/>
             <MenuItem Header="Mail" Click="btnMail_Click"/>
             <MenuItem Header="Copy" Click="btnCopy_Click"/>
+            <MenuItem Header="Copy for P4" Click="btnCopyForP4_Click"/>
             <Separator/>
             <MenuItem Header="Edit" Click="btnEdit_Click"/>
             <MenuItem Header="Add Subtask" Click="btnAddSubtask_Click"/>
@@ -60,6 +61,7 @@
                 <CheckBox x:Name="chkShowTesting" Click="chkShow_Click" Content="Show Testing"/>
                 <CheckBox x:Name="chkShowOnHold" Click="chkShow_Click" Content="Show OnHold"/>
                 <CheckBox x:Name="chkShowOther" Click="chkShow_Click" Content="Show Other"/>
+                <CheckBox x:Name="chkShowLabels" Click="chkShow_Click" Content="Show Labels"/>
                 <ComboBoxItem>-legion-</ComboBoxItem>
                 <Button Click="btnShowAll_Click" Width="90" Content="All"/>
             </ComboBox>
@@ -92,6 +94,7 @@
                     <GridViewColumn Header="Components" Width="auto" DisplayMemberBinding="{Binding ComponentsString}"/>
                     <GridViewColumn Header="Versions" Width="auto" DisplayMemberBinding="{Binding FixVersionsString}"/>
                     <GridViewColumn Header="Affects" Width="auto" DisplayMemberBinding="{Binding AffectsVersionsString}"/>
+                    <GridViewColumn Header="Labels" DisplayMemberBinding="{Binding LabelsString}"/>
                 </GridView>
             </ListView.View>
         </ListView>

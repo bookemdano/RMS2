@@ -46,6 +46,7 @@ namespace Jiranator
             Components = other.Components;
             FixVersions = other.FixVersions;
             AffectsVersions = other.AffectsVersions;
+            Labels = other.Labels;
             SubTasks = other.SubTasks;
             IssueType = other.IssueType;
             Remaining = other.Remaining;
@@ -391,6 +392,7 @@ namespace Jiranator
                 GetArrayedItem(rv.Components, fields["components"]);
                 GetArrayedItem(rv.FixVersions, fields["fixVersions"]);
                 GetArrayedItem(rv.AffectsVersions, fields["versions"]);
+                GetArrayedItem(rv.Labels, fields["labels"]);
 
                 var subs = fields["subtasks"];
                 rv.SubTasks = new List<JiraIssue>();
@@ -441,9 +443,16 @@ namespace Jiranator
             {
                 foreach (var comp in tokens)
                 {
-                    var j = comp["name"];
-                    var s = (string)j;
-                     set.Add((string)comp["name"]);
+                    if (comp.HasValues == false)
+                    {
+                        set.Add((string)comp);
+                    }
+                    else
+                    {
+                        var j = comp["name"];
+                        var s = (string)j;
+                        set.Add((string)comp["name"]);
+                    }
                 }
             }
         }
@@ -490,6 +499,7 @@ namespace Jiranator
         public List<string> Components { get; private set; } = new List<string>();
         public List<string> FixVersions { get; private set; } = new List<string>();
         public List<string> AffectsVersions { get; private set; } = new List<string>();
+        public List<string> Labels { get; private set; } = new List<string>();
         // don't forget to add to copy cont
 
         public string ComponentsString
@@ -509,6 +519,17 @@ namespace Jiranator
             {
                 _cummulative.Start();
                 var rv = StringUtils.ArrayToString(FixVersions);
+                _cummulative.Stop();
+                return rv;
+            }
+        }
+
+        public string LabelsString
+        {
+            get
+            {
+                _cummulative.Start();
+                var rv = StringUtils.ArrayToString(Labels);
                 _cummulative.Stop();
                 return rv;
             }

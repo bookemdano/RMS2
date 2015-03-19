@@ -3,7 +3,7 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-      Width="300" Height="375"
+      Width="300" Height="415"
       Title="Edit Issue">
 
     <StackPanel>
@@ -17,6 +17,8 @@
         <ComboBox Name="cmbAssignee" Margin="5" IsEditable="True"></ComboBox>
         <Label>Version</Label>
         <ComboBox Name="cmbVersion" Margin="5" IsEditable="True"></ComboBox>
+        <Label>Label</Label>
+        <TextBox Name="entLabel" Margin="5,0,5,0"/>
         <Button Click="btnOK_Click" Margin="25">OK</Button>
     </StackPanel>
 </Window>

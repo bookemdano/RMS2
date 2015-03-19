@@ -66,6 +66,7 @@ namespace Jiranator
 
             entSummary.Text = issue.Summary;
             entEstimate.Text = issue.Remaining;
+            entLabel.Text = issue.LabelsString;
         }
 
         private void SetAssignee(JiraIssue issue)
@@ -112,11 +113,13 @@ namespace Jiranator
             {
                 entSummary.Text = issue.Summary;
                 entEstimate.Text = issue.Remaining;
+                entLabel.Text = issue.LabelsString;
             }
             else
             {
                 entSummary.Text = _legion;
                 entEstimate.Text = _legion;
+                entLabel.Text = _legion;
             }
             entSummary.IsEnabled = false;
             entEstimate.IsEnabled = false;
@@ -162,7 +165,7 @@ namespace Jiranator
             DialogResult = true;
             Summary = entSummary.Text;
             Estimate = entEstimate.Text;
-
+            Labels = new List<string>() { entLabel.Text };
             Assignee = GetCmb(cmbAssignee, Assignee);
             Components = GetCmb(cmbComponent, Components);
             Version = GetCmb(cmbVersion, Version);
@@ -174,6 +177,7 @@ namespace Jiranator
         public string Estimate { get; private set; }
         public string Assignee { get; private set; }
         public List<string> Components { get; private set; }
+        public List<string> Labels { get; private set; }
         public string Version { get; private set; }
 
         private void cmbComponent_DropDownClosed(object sender, EventArgs e)

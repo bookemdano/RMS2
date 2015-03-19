@@ -31,6 +31,7 @@ namespace Jiranator
             ControlHelper.Read(entSprint);
             ControlHelper.Read(chkAutoRefresh);
             ControlHelper.Read(chkShowOther);
+            ControlHelper.Read(chkShowLabels);
             ControlHelper.Read(chkShowResolved);
             ControlHelper.Read(chkShowSubtasks);
             ControlHelper.Read(chkShowTesting);
@@ -155,6 +156,9 @@ namespace Jiranator
             if (rv && !showStatus.HasFlag(ShowStatusEnum.Testing) && (issue.IsTesting || issue.IsDoc))
                 rv = false;
             if (rv && !showStatus.HasFlag(ShowStatusEnum.Other) && !(issue.IsTesting || issue.IsDoc || issue.IsResolved || issue.IsOnHold))
+                rv = false;
+
+            if (rv && !showStatus.HasFlag(ShowStatusEnum.Labels) && issue.Labels.Count() == 0)  // hide stuff without a label
                 rv = false;
 
             return rv;
@@ -402,13 +406,16 @@ namespace Jiranator
             Other = 1,
             OnHold = 2,
             Testing = 4,
-            Resolved = 8
+            Resolved = 8,
+            Labels = 16
         }
         ShowStatusEnum ShowStatus
         {
             get
             {
                 var rv = ShowStatusEnum.None;
+                if (chkShowLabels.IsChecked == true)
+                    rv |= ShowStatusEnum.Labels;
                 if (chkShowOther.IsChecked == true)
                     rv |= ShowStatusEnum.Other;
                 if (chkShowOnHold.IsChecked == true)
@@ -611,25 +618,22 @@ namespace Jiranator
         {
             var issue = SelectedIssue;
 
-            CopyToClipboard(issue);
-
+            CopyToClipboard(issue, true);
         }
 
-        private void CopyToClipboard(JiraIssueViewModel item)
+        private void btnCopyForP4_Click(object sender, RoutedEventArgs e)
+        {
+            var issue = SelectedIssue;
+
+            CopyToClipboard(issue, false);
+        }
+
+        private void CopyToClipboard(JiraIssueViewModel item, bool includeMeta)
         {
             DataObject dataObject = new DataObject();
-            var str = "";
-            var html = "";
-            if (item.IsSubtask)
-            {
-                var parent = new JiraIssueViewModel(item.ParentIssue);
-                str += parent.Description(true) + "sub  ";
-                html += parent.HtmlDescription(true) + "sub  ";
-            }
-            str += item.Description(false);
-            html += item.HtmlDescription(false);
+            var html = item.HtmlDescription(true, true);
 
-            dataObject.SetText(str);
+            dataObject.SetText(item.Description(true, true, includeMeta));
             dataObject.SetText(HtmlWrap(html), TextDataFormat.Html);
             Clipboard.SetDataObject(dataObject);
         }
@@ -687,6 +691,11 @@ namespace Jiranator
             {
                 foreach (var issue in issues)
                     HttpAccess.HttpPut(JiraAccess.IssueUri(issue.Source, issue.Key), JiraAccess.GetFixVersionBody(rv.Version));
+            }
+            if (rv.Labels != null)
+            {
+                foreach (var issue in issues)
+                    HttpAccess.HttpPut(JiraAccess.IssueUri(issue.Source, issue.Key), JiraAccess.GetLabelsBody(rv.Labels));
             }
             NewStuff();
         }
@@ -779,6 +788,7 @@ namespace Jiranator
 
         private void chkShow_Click(object sender, RoutedEventArgs e)
         {
+            ControlHelper.Save(chkShowLabels);
             ControlHelper.Save(chkShowOther);
             ControlHelper.Save(chkShowResolved);
             ControlHelper.Save(chkShowSubtasks);
@@ -868,7 +878,7 @@ namespace Jiranator
         private void btnMail_Click(object sender, RoutedEventArgs e)
         {
             var issue = SelectedIssue;
-            CopyToClipboard(issue);
+            CopyToClipboard(issue, true);
             StartProcess(issue.MailToLink());
 
         }

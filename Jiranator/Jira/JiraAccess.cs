@@ -110,7 +110,7 @@ namespace Jiranator
             if (_getAllFields)
                 return null;
             // setting to false gets all fields but takes forever
-            var fields = new List<string>() { "parent", "summary", "assignee", "components", "versions", "fixVersions", "status", "timetracking", JiraIssue.StoryPointField, "issuetype", JiraIssue.SprintField, JiraIssue.EpicLinkField, JiraIssue.EpicStatusField };
+            var fields = new List<string>() { "parent", "summary", "assignee", "components", "versions", "fixVersions", "status", "timetracking", JiraIssue.StoryPointField, "issuetype", JiraIssue.SprintField, JiraIssue.EpicLinkField, JiraIssue.EpicStatusField, "labels" };
             return "&fields=" + string.Join(",", fields);
         }
         internal static string IssueUri(JiraSourceEnum source, string key)
@@ -134,7 +134,7 @@ namespace Jiranator
 
         internal static string GetComponentBody(List<string> names)
         {
-            return GetArrayBody("components", names);
+            return GetArrayBody("components", names, true);
         }
         static string _none = "-"; // sync with EditDetails._none
         private static string GetArrayBody(string tag, string name)
@@ -152,15 +152,18 @@ namespace Jiranator
             // "components":[{"self":"https://roadnetmobiledev.atlassian.net/rest/api/2/component/10000","id":"10000","name"
         }
 
-        private static string GetArrayBody(string tag, List<string> names)
+        private static string GetArrayBody(string tag, List<string> strs, bool named)
         {
-            if (names == null)
+            if (strs == null)
                 return GetArrayBody(tag, _none);
 
             var components = new JArray();
-            foreach (var name in names)
+            foreach (var name in strs)
             {
-                components.Add(MakeJobj("name", name));
+                if (named)
+                    components.Add(MakeJobj("name", name));
+                else
+                    components.Add(name);
             }
             var jobj3 = MakeJobj(tag, components);
             var fields = MakeJobj("fields", jobj3);
@@ -173,6 +176,11 @@ namespace Jiranator
         internal static string GetFixVersionBody(string name)
         {
             return GetArrayBody("fixVersions", name);
+        }
+
+        internal static string GetLabelsBody(List<string> names)
+        {
+            return GetArrayBody("labels", names, false);
         }
 
         internal static string GetAssignBody(string name)
@@ -220,7 +228,7 @@ namespace Jiranator
             subtask.project = MakeJobj("key", project);
             subtask.issuetype = MakeJobj("name", "Bug");
             */
-            newTask.summary = "TEST-" + issue.Key + " " + issue.Summary;
+            newTask.summary = issue.Key + " " + issue.Summary;
             newTask.description = "added by Jiranator";
             newTask.project = MakeJobj("key", project);
             newTask.issuetype = MakeJobj("name", "Bug");
