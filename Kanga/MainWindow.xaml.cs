@@ -67,6 +67,18 @@ namespace Kanga
         {
             try
             {
+                var epics = new List<JiraIssue>();
+                {
+                    var epicText = JiraHttpAccess.GetEpicsLive(source, project, false, true);
+                    var epicJson = JObject.Parse(epicText);
+                    var jsonEpics = epicJson["issues"];
+                    foreach (var jsonEpic in jsonEpics)
+                    {
+                        var epic = JiraIssue.Parse(jsonEpic);
+                        epics.Add(epic);
+                    }
+                }
+
                 string str;
                 var key = source + "-" + project;
                 if (!string.IsNullOrWhiteSpace(version))
@@ -92,6 +104,12 @@ namespace Kanga
                 foreach (var jsonIssue in jsonIssues)
                 {
                     var issue = JiraIssue.Parse(jsonIssue);
+                    if (!string.IsNullOrWhiteSpace(issue.EpicLink))
+                    {
+                        var epic = epics.SingleOrDefault(e => e.Key == issue.EpicLink);
+                        if (epic != null)
+                            issue.EpicLink += " " + epic.Summary;
+                    }
                     issues.Add(issue);
                 }
 
@@ -311,7 +329,7 @@ namespace Kanga
         }
 
         public string FixedBuild { get; private set; }
-        public string EpicLink{ get; private set; }
+        public string EpicLink{ get; set; }
 
         public static string ArrayToString(List<string> array)
         {
@@ -443,6 +461,14 @@ namespace Kanga
         {
             return HttpAccess.HttpGet(source, JiraAccess.GetSprintUri(source, project, version), showError);
         }
+        public static string GetEpicsLive(JiraSourceEnum source, ProjectEnum project, bool showError, bool saveFile = true)
+        {
+            var rv = HttpAccess.HttpGet(source, JiraAccess.GetEpicsUri(source, project), showError);
+            if (saveFile)
+                File.WriteAllText(project + "-Epics.json", rv);
+            return rv;
+        }
+
     }
     public static class HttpAccess
     {
@@ -512,20 +538,15 @@ namespace Kanga
         {
             //str = HttpGet(_latestApi + @"/search?jql=project=MOB AND Sprint='Sprint 16' and issuetype not in (subTaskIssueTypes())&maxResults=200&fields=parent,summary,subtasks,assignee," + JiraIssue.IssueTypeField);
             var jqlParts = new List<string>();
-            string strProject;
+            string strProject = GetProject(source, project);
+            jqlParts.Add(strProject);
             if (source == JiraSourceEnum.SDLC)
             {
-                if (project == ProjectEnum.RTS)
-                    strProject = "(project=MOB OR project=RP OR project=ATT)";
-                else
-                    strProject = "(project=MOB OR project=Apex OR project=Insight)";
-                jqlParts.Add(strProject);
                 jqlParts.Add("(issuetype=Bug OR issuetype=Story OR issuetype=Task)");
                 jqlParts.Add("(Status='Resolved' OR Status='Closed')");
             }
             else
             {
-                jqlParts.Add("project=" + project.ToString());
                 jqlParts.Add("Status='Resolved'");
             }
             if (!string.IsNullOrWhiteSpace(version))
@@ -556,6 +577,36 @@ namespace Kanga
             FileUtils.Log("GetSprint` " + rv);
             return rv;
         }
+        private static string GetProject(JiraSourceEnum source, ProjectEnum project)
+        {
+            var strProject = "";
+            if (source == JiraSourceEnum.SDLC)
+            {
+                if (project == ProjectEnum.RTS)
+                    strProject = "(project=MOB OR project=RP OR project=ATT)";
+                else
+                    strProject = "(project=MOB OR project=Apex OR project=Insight)";
+            }
+            else
+            {
+                strProject = "project=" + project.ToString();
+            }
+            return strProject;
+        }
+        internal static string GetEpicsUri(JiraSourceEnum source, ProjectEnum project)
+        {
+            //str = HttpGet(_latestApi + @"/search?jql=project=MOB AND Sprint='Sprint 16' and issuetype not in (subTaskIssueTypes())&maxResults=200&fields=parent,summary,subtasks,assignee," + JiraIssue.IssueTypeField);
+            var jql = GetProject(source, project);
+            //jql += " AND (issuetype='EPIC' OR 'Epic Link' IS NOT EMPTY)"; // can't use JiraIssue.EpicLinkField in query
+            jql += " AND issuetype='EPIC'";
+            //jql += " AND 'Epic Status'=Done";
+
+            var request = @"/search?jql=" + jql + "&maxResults=1000";
+            var fields = new List<string>() { "summary", "assignee", "fixVersions", "status", "issuetype" };
+            request += "&fields=" + string.Join(",", fields);
+            return GetUrl(source) + request;
+        }
+
     }
     public static class FileUtils
     {
