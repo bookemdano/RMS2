@@ -679,21 +679,25 @@ namespace Jiranator
                 return;
             if (rv.Assignee != null)
             {
+                NewStuffPending();
                 foreach (var issue in issues)
                     HttpAccess.HttpPut(JiraAccess.IssueUri(issue.Source, issue.Key), JiraAccess.GetAssignBody(rv.Assignee));
             }
             if (rv.Components != null)
             {
+                NewStuffPending();
                 foreach (var issue in issues)
                     HttpAccess.HttpPut(JiraAccess.IssueUri(issue.Source, issue.Key), JiraAccess.GetComponentBody(rv.Components));
             }
             if (rv.Version != null)
             {
+                NewStuffPending();
                 foreach (var issue in issues)
                     HttpAccess.HttpPut(JiraAccess.IssueUri(issue.Source, issue.Key), JiraAccess.GetFixVersionBody(rv.Version));
             }
             if (rv.Labels != null)
             {
+                NewStuffPending();
                 foreach (var issue in issues)
                     HttpAccess.HttpPut(JiraAccess.IssueUri(issue.Source, issue.Key), JiraAccess.GetLabelsBody(rv.Labels));
             }
@@ -1015,6 +1019,7 @@ namespace Jiranator
             var rv = new EditDetails();
             if (rv.ShowDialog() != true)
                 return;
+            NewStuffPending();
             var issues = SelectedIssues;
             foreach (var issue in issues.Where(i => !i.IsSubtask))
                 HttpAccess.HttpPost(JiraAccess.IssueUri(issue.Source), JiraAccess.GetNewSubtaskBody(project, issue, rv.Summary, rv.Estimate, rv.Assignee));
@@ -1024,6 +1029,7 @@ namespace Jiranator
 
         private void btnAddUsuals_Click(object sender, RoutedEventArgs e)
         {
+            NewStuffPending();
             var issues = SelectedIssues;
             foreach (var issue in issues.Where(i => !i.IsSubtask))
             {
@@ -1050,8 +1056,14 @@ namespace Jiranator
 
         private void NewStuff()
         {
+            NewStuffPending();
             if (AutoRefresh)
                 Update(LoadEnum.LiveAlways);
+        }
+        private void NewStuffPending()
+        {
+            if (AutoRefresh)
+                btnUpdate.IsEnabled = false;
             else
                 btnUpdate.Foreground = Brushes.OrangeRed;
         }

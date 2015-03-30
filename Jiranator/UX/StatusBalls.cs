@@ -35,7 +35,7 @@ namespace Jiranator
                         iState = 1;
                     else if (issue.CalcedStatus <= JiraIssue.StatusEnum.CodeReview)
                         iState = 2;
-                    else if (issue.CalcedStatus == JiraIssue.StatusEnum.ReadyForTesting)
+                    else if (issue.CalcedStatus == JiraIssue.StatusEnum.TestReady)
                         iState = 3;
                     else if (issue.CalcedStatus == JiraIssue.StatusEnum.InTesting)
                         iState = 4;

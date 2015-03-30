@@ -85,16 +85,16 @@
                     <GridViewColumn Header="Assignee" Width="auto" DisplayMemberBinding="{Binding Assignee}"/>
                     <GridViewColumn Header="Key" Width="auto" DisplayMemberBinding="{Binding Key}" />
                     <GridViewColumn Header="Summary" Width="auto" DisplayMemberBinding="{Binding Summary}"/>
-                    <GridViewColumn Header="Type" Width="auto" DisplayMemberBinding="{Binding IssueType}"/>
+                    <GridViewColumn Header="Type" Width="auto" DisplayMemberBinding="{Binding ShortIssueType}"/>
                     <GridViewColumn Header="Points" Width="auto" DisplayMemberBinding="{Binding StoryPoints}"/>
                     <GridViewColumn Header="Status" Width="auto" DisplayMemberBinding="{Binding CalcedStatus}"/>
                     <GridViewColumn Header="Old Status" Width="auto" DisplayMemberBinding="{Binding OldCalcedStatus}"/>
                     <GridViewColumn Header="SubTasks" Width="auto" DisplayMemberBinding="{Binding SubTaskCount}"/>
+                    <GridViewColumn Header="Labels" DisplayMemberBinding="{Binding LabelsString}"/>
                     <GridViewColumn Header="SprintAge" Width="auto" DisplayMemberBinding="{Binding SprintCount}"/>
                     <GridViewColumn Header="Components" Width="auto" DisplayMemberBinding="{Binding ComponentsString}"/>
                     <GridViewColumn Header="Versions" Width="auto" DisplayMemberBinding="{Binding FixVersionsString}"/>
                     <GridViewColumn Header="Affects" Width="auto" DisplayMemberBinding="{Binding AffectsVersionsString}"/>
-                    <GridViewColumn Header="Labels" DisplayMemberBinding="{Binding LabelsString}"/>
                 </GridView>
             </ListView.View>
         </ListView>

@@ -146,6 +146,19 @@ namespace Jiranator
         public string Parent { get; set; }
         public double StoryPoints { get; set; }
 
+        public string ShortIssueType
+        {
+            get
+            {
+                if (IssueType == "Hardware Test Request")
+                    return "Hardware";
+                else if (IssueType == "Improvement")
+                    return "Improv";
+                else
+                    return IssueType;
+            }
+        }
+
         #endregion
 
         #region Calced Properties
@@ -257,7 +270,7 @@ namespace Jiranator
         {
             get
             {
-                return CalcedStatus == StatusEnum.ReadyForTesting || CalcedStatus == StatusEnum.InTesting;
+                return CalcedStatus == StatusEnum.TestReady || CalcedStatus == StatusEnum.InTesting;
             }
         }
         public bool IsDoc
@@ -294,7 +307,7 @@ namespace Jiranator
             OnHold,
             Blocked,
             CodeReview,
-            ReadyForTesting,
+            TestReady,
             InTesting,
             Doc,
             Resolved = 10,
@@ -308,7 +321,7 @@ namespace Jiranator
             if (false == Enum.TryParse<StatusEnum>(status, out rv))
             {
                 if (status == "ReadyforTesting")
-                    rv = StatusEnum.ReadyForTesting;
+                    rv = StatusEnum.TestReady;
             }
             return rv;
         }

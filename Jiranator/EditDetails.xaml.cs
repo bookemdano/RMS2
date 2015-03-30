@@ -33,12 +33,13 @@ namespace Jiranator
             cmbComponent.Items.Add(new CheckBox() { Content = "MCP" });
             cmbComponent.Items.Add(new CheckBox() { Content = "ALK" });
 
-            cmbVersion.Items.Add(_none);
+            cmbVersion.Items.Add(_none);    
             cmbVersion.Items.Add("RTS-3.7.1");
             cmbVersion.Items.Add("RTS-3.6.9");
-            cmbVersion.Items.Add("RTS 3.6.8 SR1");
-            cmbVersion.Items.Add("RTS 3.6.8");
-            cmbVersion.Items.Add("Apex 1.4");
+            //cmbVersion.Items.Add("RTS 3.6.8 SR1");
+            //cmbVersion.Items.Add("RTS 3.6.8");
+            //cmbVersion.Items.Add("Apex 1.4");
+            cmbVersion.Items.Add("RA-3.6");
             cmbVersion.Items.Add("RA-3.5");
             cmbVersion.Items.Add(_legion);
 
@@ -136,6 +137,14 @@ namespace Jiranator
             return cmb.Text;
         }
 
+        static List<string> GetEnt(TextBox ent, List<string> original)
+        {
+            if (ent.Text == original?.FirstOrDefault() || ent.Text == _legion)
+                return null;
+
+            return new List<string>() { ent.Text };
+        }
+
         static List<string> GetCmbChks(ComboBox cmb)
         {
             var rv = new List<string>();
@@ -165,7 +174,7 @@ namespace Jiranator
             DialogResult = true;
             Summary = entSummary.Text;
             Estimate = entEstimate.Text;
-            Labels = new List<string>() { entLabel.Text };
+            Labels = GetEnt(entLabel, Labels);
             Assignee = GetCmb(cmbAssignee, Assignee);
             Components = GetCmb(cmbComponent, Components);
             Version = GetCmb(cmbVersion, Version);
