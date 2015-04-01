@@ -43,6 +43,7 @@ namespace Jiranator
             Progress = other.Progress;
             EpicStatus = other.EpicStatus;
             EpicLink = other.EpicLink;
+            CaseFiles = other.CaseFiles;
             Components = other.Components;
             FixVersions = other.FixVersions;
             AffectsVersions = other.AffectsVersions;
@@ -139,6 +140,7 @@ namespace Jiranator
         public StatusEnum Status { get; private set; }
         public string Assignee { get; set; }
         public string Sprint { get; set; }
+        public string CaseFiles { get; private set; }
 
         public StatusEnum OldStatus { get; set; }
         public StatusEnum OldCalcedStatus { get; set; }
@@ -351,6 +353,7 @@ namespace Jiranator
                 }
                 rv.EpicLink = GetString(fields, EpicLinkField);
                 rv.EpicStatus = GetString(fields, EpicStatusField);
+                rv.CaseFiles = GetString(fields, CaseFilesField);
                 if (fields[SprintField] != null)
                 {
                     foreach (var sprintPart in fields[SprintField])
@@ -642,7 +645,8 @@ namespace Jiranator
         public static string EpicLinkField = "customfield_10008";
         public static string EpicStatusField = "customfield_10010";
         public static string SprintField = "customfield_10007";
-
+        public static string CaseFilesField = "customfield_10002";
+        
         #endregion
 
     }

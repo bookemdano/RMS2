@@ -110,7 +110,7 @@ namespace Jiranator
             if (_getAllFields)
                 return null;
             // setting to false gets all fields but takes forever
-            var fields = new List<string>() { "parent", "summary", "assignee", "components", "versions", "fixVersions", "status", "timetracking", JiraIssue.StoryPointField, "issuetype", JiraIssue.SprintField, JiraIssue.EpicLinkField, JiraIssue.EpicStatusField, "labels" };
+            var fields = new List<string>() { "parent", "summary", "assignee", "components", "versions", "fixVersions", "status", "timetracking", JiraIssue.StoryPointField, "issuetype", JiraIssue.SprintField, JiraIssue.EpicLinkField, JiraIssue.EpicStatusField, "labels", JiraIssue.CaseFilesField };
             return "&fields=" + string.Join(",", fields);
         }
         internal static string IssueUri(JiraSourceEnum source, string key)

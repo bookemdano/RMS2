@@ -9,6 +9,7 @@
             <MenuItem Header="Open" Click="btnOpen_Click" FontWeight="Bold" />
             <MenuItem Header="Open On Board" Click="btnOpenOnBoard_Click" />
             <MenuItem Header="Find" Click="btnFindIssue_Click" />
+            <MenuItem Header="Case Files" Click="btnOpenCaseDirectory_Click" />
             <Separator/>
             <MenuItem Header="Mail" Click="btnMail_Click"/>
             <MenuItem Header="Copy" Click="btnCopy_Click"/>
@@ -56,12 +57,12 @@
         </StackPanel>
         <StackPanel Grid.Row="2" HorizontalAlignment="Right" Grid.ColumnSpan="2" Orientation="Horizontal">
             <CheckBox x:Name="chkShowSubtasks" Click="chkShow_Click" Content="Show Subtasks"/>
+            <CheckBox x:Name="chkShowLabels" Click="chkShow_Click" Content="Labels Only"/>
             <ComboBox x:Name="cmbShowByStatus" VerticalAlignment="Center">
                 <CheckBox x:Name="chkShowResolved" Click="chkShow_Click" Content="Show Resolved"/>
                 <CheckBox x:Name="chkShowTesting" Click="chkShow_Click" Content="Show Testing"/>
                 <CheckBox x:Name="chkShowOnHold" Click="chkShow_Click" Content="Show OnHold"/>
                 <CheckBox x:Name="chkShowOther" Click="chkShow_Click" Content="Show Other"/>
-                <CheckBox x:Name="chkShowLabels" Click="chkShow_Click" Content="Show Labels"/>
                 <ComboBoxItem>-legion-</ComboBoxItem>
                 <Button Click="btnShowAll_Click" Width="90" Content="All"/>
             </ComboBox>

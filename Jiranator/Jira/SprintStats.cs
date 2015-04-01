@@ -169,11 +169,25 @@ namespace Jiranator
             }
         }
         public List<SprintStat> Stats { get; set; }
+        public int MinStoryPointCount
+        {
+            get
+            {
+                return Stats.Min(s => s.StoryPointCounts.Total);
+            }
+        }
         public int MaxStoryPointCount
         {
             get
             {
                 return Stats.Max(s => s.StoryPointCounts.Total);
+            }
+        }
+        public int MinTaskCount
+        {
+            get
+            {
+                return Stats.Min(s => s.TaskCounts.Resolved);
             }
         }
         public int MaxTaskCount

@@ -93,22 +93,24 @@ namespace Jiranator
         private PointSets ConvertToPtSets(SprintStats sprint, bool storyPoints )
         {
             var rv = new PointSets();
-            var max = storyPoints ? (double) sprint.MaxStoryPointCount : (double) sprint.MaxTaskCount;
+            var min = storyPoints ? (double)sprint.MinStoryPointCount : (double)sprint.MinTaskCount;
+            var max = storyPoints ? (double)sprint.MaxStoryPointCount : (double)sprint.MaxTaskCount;
+            var range = max - min;
             foreach (var stat in sprint.Stats.OrderBy(s => s.Timestamp))
             {
                 var pctX = sprint.DayPct(stat.Timestamp);
                 var counts = storyPoints ? stat.StoryPointCounts : stat.TaskCounts;
 
                 var val = counts.Resolved;
-                rv.Resolved.Add(new Point(pctX, val / max));
+                rv.Resolved.Add(new Point(pctX, (val - min) / range));
                 val += counts.Testing;
-                rv.Testing.Add(new Point(pctX, val / max));
+                rv.Testing.Add(new Point(pctX, (val - min) / range));
                 val += counts.OnHold;
-                rv.OnHold.Add(new Point(pctX, val / max));
+                rv.OnHold.Add(new Point(pctX, (val - min) / range));
                 val += counts.InProgress;
-                rv.InProgress.Add(new Point(pctX, val / max));
+                rv.InProgress.Add(new Point(pctX, (val - min) / range));
 
-                rv.Total.Add(new Point(pctX, counts.Total / max));
+                rv.Total.Add(new Point(pctX, (counts.Total - min) / range));
             }
             return rv;
         }
@@ -150,20 +152,25 @@ namespace Jiranator
 
             if (chartTasks)
             {
-                AddChartLabel(new Point(0, 0), "0", Orientation.Vertical, HorizontalAlignment.Center, VerticalAlignment.Top);
+                AddChartLabel(new Point(0, 0), sprint.MinTaskCount.ToString("N0"), Orientation.Vertical, HorizontalAlignment.Center, VerticalAlignment.Top);
                 AddChartLabel(new Point(0, 1), sprint.MaxTaskCount.ToString("N0"), Orientation.Vertical, HorizontalAlignment.Center, VerticalAlignment.Bottom);
             }
+            var taskCountRange = sprint.MaxTaskCount - sprint.MinTaskCount;
 
             for (var d = .25; d < 1; d += .25)
             {
-                var yStoryPoints = 0 + (d * sprint.MaxStoryPointCount);
-                var yTasks = 0 + (d * sprint.MaxTaskCount);
-
                 // rows
                 if (chartTasks)
+                {
+                    var yTasks = sprint.MinTaskCount + (d * taskCountRange);
                     AddChartLabel(new Point(0, d), yTasks.ToString("N0"), Orientation.Vertical, HorizontalAlignment.Center, VerticalAlignment.Top, Colors.DarkBlue);
+                }
                 if (chartStoryPoints)
+                {
+                    var yStoryPoints = 0 + (d * sprint.MaxStoryPointCount);
                     AddChartLabel(new Point(0, d), yStoryPoints.ToString("N0"), Orientation.Vertical, HorizontalAlignment.Center, VerticalAlignment.Bottom, Colors.DarkGreen);
+                }
+
                 AddLine(new Point(0, d), new Point(1, d), Colors.Gray, 1);
 
             }

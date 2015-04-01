@@ -414,7 +414,7 @@ namespace Jiranator
             get
             {
                 var rv = ShowStatusEnum.None;
-                if (chkShowLabels.IsChecked == true)
+                if (chkShowLabels.IsChecked == false)
                     rv |= ShowStatusEnum.Labels;
                 if (chkShowOther.IsChecked == true)
                     rv |= ShowStatusEnum.Other;
@@ -1281,6 +1281,14 @@ namespace Jiranator
         private void lstIssues_ToolTipOpening(object sender, ToolTipEventArgs e)
         {
             lstIssues.ToolTip = DateTimeOffset.Now;
+        }
+
+        private void btnOpenCaseDirectory_Click(object sender, RoutedEventArgs e)
+        {
+            var issue = SelectedIssue;
+            if (string.IsNullOrWhiteSpace(issue?.CaseFiles))
+                return;
+            StartProcess(issue.CaseFiles);
         }
     }
     public static class ControlHelper
