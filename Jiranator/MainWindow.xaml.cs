@@ -143,7 +143,11 @@ namespace Jiranator
         {
             var rv = true;
             if (!string.IsNullOrWhiteSpace(filter))
+            {
                 rv = issue.Contains(filter);
+                if (rv)
+                    return true; // if something was searched show it regardless of filter
+            }
             else if (showStatus.HasFlag(ShowStatusEnum.Resolved))
                 rv = true;
             else if (issue.IsResolved)

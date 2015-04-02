@@ -118,8 +118,9 @@ namespace Jiranator
         {
             var rv = "";
             if (IsSubtask)
-                rv += new JiraIssueViewModel(ParentIssue).HtmlDescription(false, includeSummary) + " subtask  ";
-            
+                rv += new JiraIssueViewModel(ParentIssue)?.HtmlDescription(false, includeSummary) + " subtask  ";
+            // todo- found issues don't set parent correctly
+
             rv += "<A HREF=" + LinkDirect + ">" + Key;
             if (includeSummary)
                 rv += "-" + Summary;
