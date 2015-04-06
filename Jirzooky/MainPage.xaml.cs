@@ -8,7 +8,6 @@ using System.Windows.Navigation;
 using Microsoft.Phone.Controls;
 using Microsoft.Phone.Shell;
 using Jirzooky.Resources;
-using Jiranator;
 using System.IO;
 using System.Text;
 using Newtonsoft.Json.Linq;

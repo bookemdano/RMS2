@@ -246,6 +246,16 @@ namespace Kanga
         public List<string> Versions { get; private set; } = new List<string>();
 
         public string IssueType { get; private set; }
+        public string ShortIssueType
+        {
+            get
+            {
+                if (IssueType == "Hardware Test Request")
+                    return "Hardware";
+                else
+                    return IssueType;
+            }
+        }
         public string Key { get; private set; }
         public string CaseNumber { get; private set; }
         string _summary;

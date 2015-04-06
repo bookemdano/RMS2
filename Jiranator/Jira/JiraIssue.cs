@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Windows;
 // v1.0
 namespace Jiranator
@@ -638,6 +639,23 @@ namespace Jiranator
         }
 
         #endregion
+
+        public static bool IsIssueKey(string str)
+        {
+            var subex = @"\w{2,6}-\d{1,5}";
+            /*
+            bool b;
+            b = Regex.IsMatch("1112", subex);         //    "[^0-9](2,6)-[0-9](1,5)");
+            b = Regex.IsMatch("123-1234", subex);         //    "[^0-9](2,6)-[0-9](1,5)");
+            b = Regex.IsMatch("DEF-1234", subex);         //    "[^0-9](2,6)-[0-9](1,5)");
+            b = Regex.IsMatch("123-", subex);         //    "[^0-9](2,6)-[0-9](1,5)");
+            b = Regex.IsMatch("abc", subex);         //    "[^0-9](2,6)-[0-9](1,5)");
+
+            var ex = subex;
+            */
+            return Regex.IsMatch(str, subex);         //    "[^0-9](2,6)-[0-9](1,5)");
+        }
+
 
         #region Static Members
 

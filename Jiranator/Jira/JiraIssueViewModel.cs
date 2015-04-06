@@ -98,6 +98,29 @@ namespace Jiranator
             }
         }
 
+        public string OmniKey
+        {
+            get
+            {
+                if (!IsFromOmni)
+                    return null;
+
+                var parts = Summary.Split(" -".ToCharArray());
+                var key = parts[0] + "-" + parts[1];
+                if (!IsIssueKey(key))
+                    return null;
+
+                return key;
+            }
+        }
+        public bool IsFromOmni
+        {
+            get
+            {
+                return Summary.StartsWith("RA-") || Summary.StartsWith("RTS-");
+            }
+        }
+
         #endregion
 
         public string Description(bool includeParent, bool includeSummary, bool includeMeta)
@@ -156,8 +179,6 @@ namespace Jiranator
         }
 
         #endregion
-
-        static readonly bool _sublog = true;
 
     }
 }

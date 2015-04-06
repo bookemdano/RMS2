@@ -35,7 +35,7 @@
                         </GridViewColumn.CellTemplate>
                     </GridViewColumn>
                     <GridViewColumn Header="Status" DisplayMemberBinding="{Binding Status}"/>
-                    <GridViewColumn Header="IssueType" DisplayMemberBinding="{Binding IssueType}"/>
+                    <GridViewColumn Header="ShortIssueType" DisplayMemberBinding="{Binding IssueType}"/>
                     <GridViewColumn Header="Assignee" DisplayMemberBinding="{Binding Assignee}"/>
                     <GridViewColumn Header="Fixed Version" DisplayMemberBinding="{Binding VersionsString}"/>
                     <GridViewColumn Header="Fixed Build #"  DisplayMemberBinding="{Binding FixedBuild}"/>

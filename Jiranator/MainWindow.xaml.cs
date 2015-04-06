@@ -104,23 +104,23 @@ namespace Jiranator
 
         private void Test()
         {
-            if (IsIssueKey("MOB-1") != true)
+            if (JiraIssue.IsIssueKey("MOB-1") != true)
                 throw new Exception();
-            if (IsIssueKey("MOB-123") != true)
+            if (JiraIssue.IsIssueKey("MOB-123") != true)
                 throw new Exception();
-            if (IsIssueKey("MOB-1234") != true)
+            if (JiraIssue.IsIssueKey("MOB-1234") != true)
                 throw new Exception();
-            if (IsIssueKey("MOB-12345") != true)
+            if (JiraIssue.IsIssueKey("MOB-12345") != true)
                 throw new Exception();
-            if (IsIssueKey("AP-1") != true)
+            if (JiraIssue.IsIssueKey("AP-1") != true)
                 throw new Exception();
-            if (IsIssueKey("AP-23411") != true)
+            if (JiraIssue.IsIssueKey("AP-23411") != true)
                 throw new Exception();
-            if (IsIssueKey("Bob") != false)
+            if (JiraIssue.IsIssueKey("Bob") != false)
                 throw new Exception();
-            if (IsIssueKey("iOS") != false)
+            if (JiraIssue.IsIssueKey("iOS") != false)
                 throw new Exception();
-            if (IsIssueKey("enabled rmv") != false)
+            if (JiraIssue.IsIssueKey("enabled rmv") != false)
                 throw new Exception();
 
         }
@@ -179,7 +179,7 @@ namespace Jiranator
         List<JiraIssue> FindIssues(JiraSourceEnum source, string text)
         {
             string url;
-            if (IsIssueKey(text))
+            if (JiraIssue.IsIssueKey(text))
                 url = JiraAccess.FindIssueByKey(source, text);
             else
                 url = JiraAccess.SearchIssuesUri(source, text);
@@ -263,7 +263,7 @@ namespace Jiranator
                         rv.Add(new SprintKey(project, parts[1] + " " + i));
                 }
             }
-            catch(Exception exc)
+            catch (Exception exc)
             {
                 //sta.Content = "Sprint parse error " + exc.Message;
             }
@@ -670,7 +670,7 @@ namespace Jiranator
 
         private void lstIssues_DoubleClick(object sender, MouseButtonEventArgs e)
         {
-            btnOpen_Click(null, null);
+            OpenSelected();
         }
 
         private void btnEdit_Click(object sender, RoutedEventArgs e)
@@ -833,8 +833,17 @@ namespace Jiranator
 
         private void btnOpen_Click(object sender, RoutedEventArgs e)
         {
+            OpenSelected();
+        }
+        private void OpenSelected()
+        { 
             var issue = SelectedIssue;
             StartProcess(issue.LinkDirect);
+            if (issue.IsFromOmni)
+            {
+                var omniLink = JiraAccess.LinkDirect(JiraSourceEnum.Omnitracs) + issue.OmniKey;
+                StartProcess(omniLink);
+            }
         }
 
         string _filter;
@@ -867,20 +876,6 @@ namespace Jiranator
             AddIssues(issues);
             RefreshIssueList(true);
             sta.Content = "Searched for " + entFilter.Text;
-        }
-
-        private bool IsIssueKey(string str)
-        {
-            bool b;
-            var subex = @"\w{2,6}-\d{1,5}";
-            b = Regex.IsMatch("1112", subex);         //    "[^0-9](2,6)-[0-9](1,5)");
-            b = Regex.IsMatch("123-1234", subex);         //    "[^0-9](2,6)-[0-9](1,5)");
-            b = Regex.IsMatch("DEF-1234", subex);         //    "[^0-9](2,6)-[0-9](1,5)");
-            b = Regex.IsMatch("123-", subex);         //    "[^0-9](2,6)-[0-9](1,5)");
-            b = Regex.IsMatch("abc", subex);         //    "[^0-9](2,6)-[0-9](1,5)");
-
-            var ex = subex;
-            return Regex.IsMatch(str, ex);         //    "[^0-9](2,6)-[0-9](1,5)");
         }
 
         private void btnMail_Click(object sender, RoutedEventArgs e)
@@ -1075,15 +1070,11 @@ namespace Jiranator
         private void btnShowOmni_Click(object sender, RoutedEventArgs e)
         {
             var issues = new List<JiraIssue>();
-            foreach (var issue in Issues.Where(i => i.Summary.StartsWith("RA-") || i.Summary.StartsWith("RTS-")))
+            foreach (var issue in Issues.Where(i => i.IsFromOmni))
             {
-                var summary = issue.Summary;
-                var parts = summary.Split(" -".ToCharArray());
-                var key = parts[0] + "-" + parts[1];
-                if (IsIssueKey(key))
-                {
+                var key = issue.OmniKey;
+                if (key != null)
                     issues.AddRange(FindIssues(JiraSourceEnum.Omnitracs, key));
-                }
             }
             if (issues.Count() == 0)
                 return;
