@@ -173,9 +173,9 @@ namespace Jiranator
             // "components":[{"self":"https://roadnetmobiledev.atlassian.net/rest/api/2/component/10000","id":"10000","name"
         }
 
-        internal static string GetFixVersionBody(string name)
+        internal static string GetFixVersionBody(List<string> names)
         {
-            return GetArrayBody("fixVersions", name);
+            return GetArrayBody("fixVersions", names, true);
         }
 
         internal static string GetLabelsBody(List<string> names)

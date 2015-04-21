@@ -6,7 +6,6 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -693,11 +692,11 @@ namespace Jiranator
                 foreach (var issue in issues)
                     HttpAccess.HttpPut(JiraAccess.IssueUri(issue.Source, issue.Key), JiraAccess.GetComponentBody(rv.Components));
             }
-            if (rv.Version != null)
+            if (rv.Versions != null)
             {
                 NewStuffPending();
                 foreach (var issue in issues)
-                    HttpAccess.HttpPut(JiraAccess.IssueUri(issue.Source, issue.Key), JiraAccess.GetFixVersionBody(rv.Version));
+                    HttpAccess.HttpPut(JiraAccess.IssueUri(issue.Source, issue.Key), JiraAccess.GetFixVersionBody(rv.Versions));
             }
             if (rv.Labels != null)
             {

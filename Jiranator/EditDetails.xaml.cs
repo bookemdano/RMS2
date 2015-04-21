@@ -23,47 +23,58 @@ namespace Jiranator
         public EditDetails()
         {
             InitializeComponent();
-            cmbComponent.Items.Add(_legion);
-            cmbComponent.Items.Add(new CheckBox() { Content = "AMX" });
-            cmbComponent.Items.Add(new CheckBox() { Content = "IMX" });
-            cmbComponent.Items.Add(new CheckBox() { Content = "WMX" });
-            cmbComponent.Items.Add(_none);
-            cmbComponent.Items.Add(new CheckBox() { Content = "RMV" });
-            cmbComponent.Items.Add(new CheckBox() { Content = "Apex" });
-            cmbComponent.Items.Add(new CheckBox() { Content = "MCP" });
-            cmbComponent.Items.Add(new CheckBox() { Content = "ALK" });
+            AddString(cmbComponent, _legion);
+            AddCheckbox(cmbComponent, "AMX");
+            AddCheckbox(cmbComponent, "IMX");
+            AddCheckbox(cmbComponent, "WMX");
+            AddString(cmbComponent, _none);
+            AddCheckbox(cmbComponent, "RMV");
+            AddCheckbox(cmbComponent, "Apex");
+            AddCheckbox(cmbComponent, "MCP");
+            AddCheckbox(cmbComponent, "ALK");
 
-            cmbVersion.Items.Add(_none);    
-            cmbVersion.Items.Add("RTS-3.7.1");
-            cmbVersion.Items.Add("RTS-3.6.9");
+            AddString(cmbVersion, _none);
+            AddCheckbox(cmbVersion, "RTS-3.7.1");
+            AddCheckbox(cmbVersion, "RTS-3.6.9");
             //cmbVersion.Items.Add("RTS 3.6.8 SR1");
             //cmbVersion.Items.Add("RTS 3.6.8");
             //cmbVersion.Items.Add("Apex 1.4");
-            cmbVersion.Items.Add("RA-3.6");
-            cmbVersion.Items.Add("RA-3.5");
-            cmbVersion.Items.Add(_legion);
+            AddCheckbox(cmbVersion, "RA-3.6");
+            AddCheckbox(cmbVersion, "RA-3.5");
+            AddString(cmbVersion, _legion);
 
-            cmbAssignee.Items.Add("dfrancis");
-            cmbAssignee.Items.Add("bpayne");
-            cmbAssignee.Items.Add("dloyd");
-            cmbAssignee.Items.Add("ehartig");
-            cmbAssignee.Items.Add(_none);
-            cmbAssignee.Items.Add("alkra");
-            cmbAssignee.Items.Add("dshmilo");
-            cmbAssignee.Items.Add(_none);
-            cmbAssignee.Items.Add("dowen");
-            cmbAssignee.Items.Add("jyoung");
-            cmbAssignee.Items.Add(_none);
-            cmbAssignee.Items.Add("lstevens");
+            AddString(cmbAssignee, "dfrancis");
+            AddString(cmbAssignee, "bpayne");
+            AddString(cmbAssignee, "dloyd");
+            AddString(cmbAssignee, "ehartig");
+            AddString(cmbAssignee, _none);
+            AddString(cmbAssignee, "alkra");
+            AddString(cmbAssignee, "dshmilo");
+            AddString(cmbAssignee, _none);
+            AddString(cmbAssignee, "dowen");
+            AddString(cmbAssignee, "jyoung");
+            AddString(cmbAssignee, _none);
+            AddString(cmbAssignee, "lstevens");
         }
+
+        private void AddString(ComboBox cmb, string text)
+        {
+            cmb.Items.Add(text);
+        }
+
+        private void AddCheckbox(ComboBox cmb, string text)
+        {
+            cmb.Items.Add(new CheckBox() { Content = text });
+        }
+
         public static string _legion = "-legion-";
         public static string _none = "-";
         public EditDetails(JiraIssue issue) :
             this()
         {
             SetAssignee(issue);
-            SetComponent(issue);
-            SetVersion(issue);
+            SetComponents(issue);
+            SetVersions(issue);
 
             entSummary.Text = issue.Summary;
             entEstimate.Text = issue.Remaining;
@@ -79,7 +90,7 @@ namespace Jiranator
             cmbAssignee.Text = Assignee;
         }
 
-        private void SetComponent(JiraIssue issue)
+        private void SetComponents(JiraIssue issue)
         {
             foreach (var item in cmbComponent.Items)
             {
@@ -93,15 +104,18 @@ namespace Jiranator
             cmbComponent.Text = issue.ComponentsString;
         }
 
-        private void SetVersion(JiraIssue issue)
+        private void SetVersions(JiraIssue issue)
         {
-            if (issue.FixVersions.Count() > 1)
-                Version = _legion;
-            else if (issue.FixVersions.Count() == 1)
-                Version = issue.FixVersions[0];
-            else
-                Version = _none;
-            cmbVersion.Text = Version;
+            foreach (var item in cmbVersion.Items)
+            {
+                var chk = item as CheckBox;
+                if (chk == null)
+                    continue;
+                chk.IsChecked = issue.FixVersions.Contains(chk.Content);
+            }
+
+            Versions = issue.FixVersions;
+            cmbVersion.Text = issue.FixVersionsString;
         }
 
         public EditDetails(IList<JiraIssue> issues) :           
@@ -125,8 +139,8 @@ namespace Jiranator
             entSummary.IsEnabled = false;
             entEstimate.IsEnabled = false;
             SetAssignee(issue);
-            SetComponent(issue);
-            SetVersion(issue);
+            SetComponents(issue);
+            SetVersions(issue);
         }
 
         static string GetCmb(ComboBox cmb, string original)
@@ -177,7 +191,7 @@ namespace Jiranator
             Labels = GetEnt(entLabel, Labels);
             Assignee = GetCmb(cmbAssignee, Assignee);
             Components = GetCmb(cmbComponent, Components);
-            Version = GetCmb(cmbVersion, Version);
+            Versions = GetCmb(cmbVersion, Versions);
 
             Close();
         }
@@ -187,12 +201,18 @@ namespace Jiranator
         public string Assignee { get; private set; }
         public List<string> Components { get; private set; }
         public List<string> Labels { get; private set; }
-        public string Version { get; private set; }
+        public List<string> Versions { get; private set; }
 
         private void cmbComponent_DropDownClosed(object sender, EventArgs e)
         {
             var chks = GetCmbChks(cmbComponent);
             cmbComponent.Text = StringUtils.ArrayToString(chks);
+        }
+
+        private void cmbVersion_DropDownClosed(object sender, EventArgs e)
+        {
+            var chks = GetCmbChks(cmbVersion);
+            cmbVersion.Text = StringUtils.ArrayToString(chks);
         }
     }
 }

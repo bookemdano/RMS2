@@ -16,7 +16,7 @@
         <Label>Assignee</Label>
         <ComboBox Name="cmbAssignee" Margin="5" IsEditable="True"></ComboBox>
         <Label>Version</Label>
-        <ComboBox Name="cmbVersion" Margin="5" IsEditable="True"></ComboBox>
+        <ComboBox Name="cmbVersion" Margin="5" IsEditable="True"  DropDownClosed="cmbVersion_DropDownClosed"></ComboBox>
         <Label>Label</Label>
         <TextBox Name="entLabel" Margin="5,0,5,0"/>
         <Button Click="btnOK_Click" Margin="25">OK</Button>
