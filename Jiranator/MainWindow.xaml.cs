@@ -45,7 +45,7 @@ namespace Jiranator
             dt.Tick += Dt_Tick;
             dt.Start();
 
-            Test();
+            //Test();
         }
 
         private CheckBox[] GetShowByStatus()
@@ -103,6 +103,8 @@ namespace Jiranator
 
         private void Test()
         {
+            var strUsers = HttpAccess.HttpGet(JiraAccess.GetUsersUri(JiraSourceEnum.SDLC), true);
+            File.WriteAllText(@"users.txt", strUsers);
             if (JiraIssue.IsIssueKey("MOB-1") != true)
                 throw new Exception();
             if (JiraIssue.IsIssueKey("MOB-123") != true)
@@ -177,6 +179,7 @@ namespace Jiranator
 
         List<JiraIssue> FindIssues(JiraSourceEnum source, string text)
         {
+
             string url;
             if (JiraIssue.IsIssueKey(text))
                 url = JiraAccess.FindIssueByKey(source, text);

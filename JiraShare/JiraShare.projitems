@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MSBuildAllProjects>$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <SharedGUID>f589e55b-c213-4334-89e4-75295c360003</SharedGUID>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <Import_RootNamespace>JiraShare</Import_RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)JiraAccess.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)JiraIssue.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)JiraIssueViewModel.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SprintGrapher.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)SprintStats.cs" />
+  </ItemGroup>
+</Project>

@@ -34,13 +34,11 @@ namespace Jiranator
             AddCheckbox(cmbComponent, "ALK");
 
             AddString(cmbVersion, _none);
+            AddCheckbox(cmbVersion, "RTS-3.7.3");
+            AddCheckbox(cmbVersion, "RTS-3.7.2");
             AddCheckbox(cmbVersion, "RTS-3.7.1");
-            AddCheckbox(cmbVersion, "RTS-3.6.9");
-            //cmbVersion.Items.Add("RTS 3.6.8 SR1");
-            //cmbVersion.Items.Add("RTS 3.6.8");
-            //cmbVersion.Items.Add("Apex 1.4");
-            AddCheckbox(cmbVersion, "RA-3.6");
-            AddCheckbox(cmbVersion, "RA-3.5");
+            AddCheckbox(cmbVersion, "RA-3.8");
+            AddCheckbox(cmbVersion, "RA-3.7");
             AddString(cmbVersion, _legion);
 
             AddString(cmbAssignee, "dfrancis");

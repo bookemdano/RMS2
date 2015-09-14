@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.22609.0
+VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Utils", "Utils\Utils.csproj", "{0183AC29-C3F9-4422-B30A-C06D55D7BB49}"
 EndProject
@@ -25,11 +25,16 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kanga", "Kanga\Kanga.csproj
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Epicnator", "Epicnator\Epicnator.csproj", "{43CBF9BD-4A04-4C60-8CC5-EB5FE12507A7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Jiragile", "Jiragile\Jiragile.csproj", "{7BB96C21-A1D6-4081-8FC3-086ADED4D395}"
+EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "JiraShare", "JiraShare\JiraShare.shproj", "{F589E55B-C213-4334-89E4-75295C360003}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		Jirate\Jirate.Shared\Jirate.Shared.projitems*{5baab0aa-4f12-4dcd-bee0-b70b7a7efd56}*SharedItemsImports = 4
 		Jirate\Jirate.Shared\Jirate.Shared.projitems*{43552f69-9a10-4467-ac7a-226aedcd24cb}*SharedItemsImports = 13
 		Jirate\Jirate.Shared\Jirate.Shared.projitems*{32672895-8a41-4938-8584-923ad871a0c4}*SharedItemsImports = 4
+		JiraShare\JiraShare.projitems*{f589e55b-c213-4334-89e4-75295c360003}*SharedItemsImports = 13
 	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -178,6 +183,26 @@ Global
 		{43CBF9BD-4A04-4C60-8CC5-EB5FE12507A7}.Release|x64.Build.0 = Release|Any CPU
 		{43CBF9BD-4A04-4C60-8CC5-EB5FE12507A7}.Release|x86.ActiveCfg = Release|Any CPU
 		{43CBF9BD-4A04-4C60-8CC5-EB5FE12507A7}.Release|x86.Build.0 = Release|Any CPU
+		{7BB96C21-A1D6-4081-8FC3-086ADED4D395}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{7BB96C21-A1D6-4081-8FC3-086ADED4D395}.Debug|ARM.ActiveCfg = Debug|ARM
+		{7BB96C21-A1D6-4081-8FC3-086ADED4D395}.Debug|ARM.Build.0 = Debug|ARM
+		{7BB96C21-A1D6-4081-8FC3-086ADED4D395}.Debug|ARM.Deploy.0 = Debug|ARM
+		{7BB96C21-A1D6-4081-8FC3-086ADED4D395}.Debug|x64.ActiveCfg = Debug|x64
+		{7BB96C21-A1D6-4081-8FC3-086ADED4D395}.Debug|x64.Build.0 = Debug|x64
+		{7BB96C21-A1D6-4081-8FC3-086ADED4D395}.Debug|x64.Deploy.0 = Debug|x64
+		{7BB96C21-A1D6-4081-8FC3-086ADED4D395}.Debug|x86.ActiveCfg = Debug|x86
+		{7BB96C21-A1D6-4081-8FC3-086ADED4D395}.Debug|x86.Build.0 = Debug|x86
+		{7BB96C21-A1D6-4081-8FC3-086ADED4D395}.Debug|x86.Deploy.0 = Debug|x86
+		{7BB96C21-A1D6-4081-8FC3-086ADED4D395}.Release|Any CPU.ActiveCfg = Release|x86
+		{7BB96C21-A1D6-4081-8FC3-086ADED4D395}.Release|ARM.ActiveCfg = Release|ARM
+		{7BB96C21-A1D6-4081-8FC3-086ADED4D395}.Release|ARM.Build.0 = Release|ARM
+		{7BB96C21-A1D6-4081-8FC3-086ADED4D395}.Release|ARM.Deploy.0 = Release|ARM
+		{7BB96C21-A1D6-4081-8FC3-086ADED4D395}.Release|x64.ActiveCfg = Release|x64
+		{7BB96C21-A1D6-4081-8FC3-086ADED4D395}.Release|x64.Build.0 = Release|x64
+		{7BB96C21-A1D6-4081-8FC3-086ADED4D395}.Release|x64.Deploy.0 = Release|x64
+		{7BB96C21-A1D6-4081-8FC3-086ADED4D395}.Release|x86.ActiveCfg = Release|x86
+		{7BB96C21-A1D6-4081-8FC3-086ADED4D395}.Release|x86.Build.0 = Release|x86
+		{7BB96C21-A1D6-4081-8FC3-086ADED4D395}.Release|x86.Deploy.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
