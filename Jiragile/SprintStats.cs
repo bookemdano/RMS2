@@ -1,10 +1,10 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using JiraOne;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 
-namespace Jiranator
+namespace JiraShare
 {
     public enum GroupEnum
     {
@@ -19,14 +19,14 @@ namespace Jiranator
         // TODONE 2104/07/28 zipped all files
         // TODO Save a copy as json, let clean clear them all out.
         static dynamic _oldStat;
-        internal static SprintStats ReadStats(JiraSet currentSprint)
+        internal static async Task<SprintStats> ReadStats(JiraSet currentSprint)
         {
             bool logSpeed = true;
             var sw = System.Diagnostics.Stopwatch.StartNew();
 
             var key = currentSprint.Key;
 
-            var fileTimes = GetDatedFiles(key);
+            var fileTimes = await GetDatedFiles(key);
             if (logSpeed)
                 FileUtils.Log("ReadStats GetDatedFiles", sw);
 
@@ -52,11 +52,10 @@ namespace Jiranator
             {
                 try
                 {
-                    var name = JiraAccessFile.GetFilename(key, dt);
-                    var compressed = File.ReadAllBytes(name);
+                    var compressed = await FileUtils.ReadAllBytes(JiraFileAccess.GetFile(key, dt));
                     if (logEachSpeed)
                         FileUtils.Log("ReadAllBytes " + dt, sw);
-                    var str = JiraAccessFile.UnZipStr(compressed);
+                    var str = JiraFileAccess.UnZipStr(compressed);
 
                     if (logEachSpeed)
                         FileUtils.Log("UnZipStr " + dt, sw);
@@ -81,16 +80,16 @@ namespace Jiranator
             return rv;
         }
 
-        static private Dictionary<string, DateTimeOffset> GetDatedFiles(SprintKey sprintKey)
+        static private async Task<Dictionary<string, DateTimeOffset>> GetDatedFiles(SprintKey sprintKey)
         {
-            var files = Directory.GetFiles(JiraAccessFile.Dir, JiraAccessFile.GetFileMask(sprintKey));
+            var files = await FileUtils.GetFiles(JiraFileAccess.GetFileMask(sprintKey));
 
             if (files == null || files.Count() == 0)
                 return null;
 
             var fileDates = new Dictionary<string, DateTimeOffset>();
             foreach (var file in files)
-                fileDates.Add(file, JiraAccessFile.DateTimeFromFileName(file));
+                fileDates.Add(file, JiraFileAccess.DateTimeFromFileName(file));
             return fileDates;
         }
 

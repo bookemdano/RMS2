@@ -60,11 +60,8 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>
-    <Compile Include="..\Jiranator\Jira\JiraAccess.cs">
-      <Link>JiraAccess.cs</Link>
-    </Compile>
-    <Compile Include="..\Jiranator\Jira\JiraIssue.cs">
-      <Link>JiraIssue.cs</Link>
+    <Compile Include="..\Jiranator\HttpAccess.cs">
+      <Link>HttpAccess.cs</Link>
     </Compile>
     <Compile Include="..\Jiranator\Utils.cs">
       <Link>Utils.cs</Link>
@@ -106,6 +103,7 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
+  <Import Project="..\JiraShare\JiraShare.projitems" Label="Shared" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

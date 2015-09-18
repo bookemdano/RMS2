@@ -1,4 +1,6 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using JiraOne;
+using JiraShare;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -6,6 +8,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -190,7 +193,7 @@ namespace Jiranator
                 return null;
             try
             {
-                JiraAccessFile.WriteResults(text + ".json", str);
+                JiraFileAccess.WriteResults(text + ".json", str);
             }
             catch (Exception)
             {
@@ -265,7 +268,7 @@ namespace Jiranator
                         rv.Add(new SprintKey(project, parts[1] + " " + i));
                 }
             }
-            catch (Exception exc)
+            catch (Exception)
             {
                 //sta.Content = "Sprint parse error " + exc.Message;
             }
@@ -288,7 +291,7 @@ namespace Jiranator
             }
         }
 
-        private JiraSet GetIssues(BackgroundWorker bw, string sprintText, LoadEnum latest, LoadEnum old)
+        private async Task<JiraSet> GetIssues(BackgroundWorker bw, string sprintText, LoadEnum latest, LoadEnum old)
         {
             var parts = GetSprintList(sprintText);
 
@@ -298,12 +301,12 @@ namespace Jiranator
             {
                 var single = parts.First();
                 jiraSetOld.Issues = new List<JiraIssue>();
-                jiraSetOld.Merge(GetJiraSet(bw, single, old));
+                jiraSetOld.Merge(await GetJiraSet(bw, single, old));
             }
             var jiraSet = new JiraSet();
             jiraSet.Issues = new List<JiraIssue>();
             foreach (var part in parts)
-                jiraSet.Merge(GetJiraSet(bw, part, latest));
+                jiraSet.Merge(await GetJiraSet(bw, part, latest));
 
             if (parts.Count() == 1)
                 jiraSet.UpdateOldStatus(jiraSetOld);
@@ -315,7 +318,7 @@ namespace Jiranator
         JiraSet _jiraSet;
 
         DateTimeOffset _lastLive = DateTimeOffset.MinValue;
-        private JiraSet GetJiraSet(BackgroundWorker bw, SprintKey sprintKey, LoadEnum load)
+        private async Task<JiraSet> GetJiraSet(BackgroundWorker bw, SprintKey sprintKey, LoadEnum load)
         {
             try
             {
@@ -350,7 +353,9 @@ namespace Jiranator
                 {
                     try
                     {
-                        str = JiraAccessFile.Read(new SprintKey(project, sprint), load, out dt);
+                        var touple = await JiraFileAccess.Read(new SprintKey(project, sprint), load);
+                        str = touple.Item1;
+                        dt = touple.Item2;
                     }
                     catch (IOException ioexc)
                     {
@@ -404,16 +409,6 @@ namespace Jiranator
             {
                 return chkShowSubtasks.IsChecked == true;
             }
-        }
-        [Flags]
-        public enum ShowStatusEnum
-        {
-            None = 0,
-            Other = 1,
-            OnHold = 2,
-            Testing = 4,
-            Resolved = 8,
-            Labels = 16
         }
         ShowStatusEnum ShowStatus
         {
@@ -491,10 +486,10 @@ namespace Jiranator
         }
         static readonly bool _logSubSpeeds = true;
 
-        private void UpdateStatsForOld()
+        private async void UpdateStatsForOld()
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            _stats = SprintStats.ReadStats(_jiraSet);
+            _stats = await SprintStats.ReadStats(_jiraSet);
             if (_logSubSpeeds)
                 FileUtils.Log("Stats", sw);
             UpdateOlds();
@@ -734,14 +729,14 @@ namespace Jiranator
             {
                 outs.Add(issue.ToCsv());
             }
-            var file = Path.Combine(JiraAccessFile.Dir, "issues.csv");
+            var file = Path.Combine(FileUtils.Dir, "issues.csv");
             File.WriteAllLines(file, outs.ToArray());
             StartProcess(file);
 
 
-            file = Path.Combine(JiraAccessFile.Dir, "sprints.csv");
+            file = Path.Combine(FileUtils.Dir, "sprints.csv");
             if (File.Exists(file))
-                outs = File.ReadAllLines(Path.Combine(JiraAccessFile.Dir, "sprints.csv")).ToList();
+                outs = File.ReadAllLines(Path.Combine(FileUtils.Dir, "sprints.csv")).ToList();
             else
                 outs = new List<string>();
 
@@ -762,9 +757,9 @@ namespace Jiranator
             System.Diagnostics.Process.Start(uri);
         }
 
-        private void Window_Loaded(object sender, RoutedEventArgs e)
+        private async void Window_Loaded(object sender, RoutedEventArgs e)
         {
-            _jiraSet = GetIssues(null, entSprint.Text, LoadEnum.Latest, LoadEnum.Yesterday);
+            _jiraSet = await GetIssues(null, entSprint.Text, LoadEnum.Latest, LoadEnum.Yesterday);
             RefreshIssueList(false);
             Update(LoadEnum.LiveOnlyIfOld); // kick off async refresh
         }
@@ -863,7 +858,7 @@ namespace Jiranator
 
         private void btnClean_Click(object sender, RoutedEventArgs e)
         {
-            var nDeleted = JiraAccessFile.CleanUp();
+            var nDeleted = JiraFileAccess.CleanUp();
             MessageBox.Show(nDeleted.ToString() + " files deleted");
         }
 
@@ -1047,7 +1042,7 @@ namespace Jiranator
             foreach (var omniIssue in issues.Where(i => !i.IsSubtask))
             {
                 var str = HttpAccess.HttpPost(JiraAccess.IssueUri(JiraSourceEnum.SDLC), JiraAccess.GetNewTaskBody(Project, omniIssue));
-                JiraAccessFile.WriteResults("new.json", str);
+                JiraFileAccess.WriteResults("new.json", str);
                 var json = JObject.Parse(str);
                 var self = (string)json["self"];
                 HttpAccess.HttpPost(self + @"/remotelink", JiraAccess.GetNewLinkBody(omniIssue));
@@ -1216,9 +1211,9 @@ namespace Jiranator
             //var index = selected.IndexOf(" v. ");
             //var dtStr = selected.Substring(index + " v. ".Length);
             var dt = (DateTimeOffset)(e.AddedItems[0] as ComboBoxItem).Tag;
-            if (JiraAccessFile.OldCompare != dt)
+            if (JiraFileAccess.OldCompare != dt)
             {
-                JiraAccessFile.OldCompare = dt;
+                JiraFileAccess.OldCompare = dt;
                 Update(LoadEnum.LiveOnlyIfOld);
             }
         }

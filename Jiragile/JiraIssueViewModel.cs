@@ -1,9 +1,11 @@
-﻿using System.ComponentModel;
+﻿using JiraShare;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
-using System.Windows.Media;
+using Windows.UI;
+using Windows.UI.Xaml.Media;
 
-namespace Jiranator
+namespace JiraOne
 {
     // TODONE added sprint age
     public class JiraIssueViewModel : JiraIssue, INotifyPropertyChanged

@@ -6,8 +6,18 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Windows;
 // v1.0
-namespace Jiranator
+namespace JiraShare
 {
+    [Flags]
+    public enum ShowStatusEnum
+    {
+        None = 0x0,
+        Other = 0x1,
+        OnHold = 0x2,
+        Testing = 0x4,
+        Resolved = 0x8,
+        Labels = 0x10
+    }
 
     // TODO Allow setting and linking to salesforce item
     // TODO Show by Epic
@@ -422,7 +432,7 @@ namespace Jiranator
                 }
                 return rv;
             }
-            catch (Exception exc)
+            catch (Exception)
             {
                 throw;
             }
@@ -841,7 +851,7 @@ namespace Jiranator
             }
             else
             {
-                MessageBox.Show("Bad Sprint Text Format- should be like 'MOB Sprint 25' not " + sprintText);
+                //MessageBox.Show("Bad Sprint Text Format- should be like 'MOB Sprint 25' not " + sprintText);
                 Project = "MOB";
                 Sprint = "Sprint 1";
             }

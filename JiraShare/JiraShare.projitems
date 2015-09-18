@@ -11,8 +11,6 @@
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)JiraAccess.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)JiraIssue.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)JiraIssueViewModel.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)SprintGrapher.cs" />
-    <Compile Include="$(MSBuildThisFileDirectory)SprintStats.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Utils.cs" />
   </ItemGroup>
 </Project>

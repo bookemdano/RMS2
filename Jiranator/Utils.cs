@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Media;
 
-namespace Jiranator
+namespace JiraOne
 {
     public static class UIUtils
     {
@@ -51,47 +51,53 @@ namespace Jiranator
 
             FileUtils.Log(str);
         }
-    }
-    public static class StringUtils
-    {
-        internal static string GetStringBetween(string line, string strStart, string strEnd)
-        {
-            var start = line.IndexOf(strStart);
-            if (start == -1)
-                return null;
-            start += strStart.Length;
-            int end;
-            if (strEnd == null)
-                end = line.Length;
-            else
-                end = line.IndexOf(strEnd, start);
-            if (end == -1)
-                return null;
-            var str = line.Substring(start, end - start).Trim();
-            return str;
-        }
-        public static string ArrayToString(List<string> array)
-        {
-            if (array == null)
-                return "-";
-            return string.Join("|", array.OrderBy(a => a).ToArray());
-        }
-    }
-    static public class TimeUtils
-    {
-        public static string RelativeDate(this DateTimeOffset dt)
-        {
-            var now = DateTimeOffset.UtcNow;
-            var days = (dt - now).TotalDays;
-            string rv;
-            if (Math.Abs(days) < 30)
-                rv = dt.ToString(@"ddd M/d");
-            else if (now.Year == dt.Year)
-                rv = dt.ToString(@"M/d");
-            else
-                rv = dt.ToString(@"M/d/yy");
 
-            return rv;
+        static string _dir;
+        internal static string Dir
+        {
+            get
+            {
+                if (_dir != null)
+                    return _dir;
+                try
+                {
+                    _dir = FileUtils.GetDataPath();
+                    _dir = Path.Combine(_dir, "Jiranator");
+                    Directory.CreateDirectory(_dir);
+                }
+                catch (Exception)
+                {
+                    _dir = ".";
+                }
+                return _dir;
+            }
+        }
+
+        internal static void WriteAllBytes(string name, byte[] compressed)
+        {
+            var filename = Path.Combine(Dir, name);
+            File.WriteAllBytes(filename, compressed);
+        }
+
+        internal static void WriteAllText(string name, string str)
+        {
+            var filename = Path.Combine(Dir, name);
+            File.WriteAllText(filename, str);
+        }
+
+        internal static async Task<string[]> GetFiles(string mask)
+        {
+            return Directory.GetFiles(Dir, mask);
+        }
+
+        internal static async Task<byte[]> ReadAllBytes(string filename)
+        {
+            return File.ReadAllBytes(filename);
+        }
+
+        internal static void Delete(string filename)
+        {
+            File.Delete(filename);
         }
     }
 }

@@ -1,14 +1,15 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using JiraOne;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows;
 
-namespace Jiranator
+namespace JiraShare
 {
     public enum JiraSourceEnum
     {
@@ -266,13 +267,13 @@ namespace Jiranator
                 return JiraSourceEnum.SDLC;
         }
     }
-    static public class JiraAccessFile
+    static public class JiraFileAccess
     {
         static bool _saveUncompressedCopy = false;
 
-        internal static int CleanUp()
+        internal static async Task<int> CleanUp()
         {
-            var files = Directory.GetFiles(Dir, "*.jz");
+            var files = await FileUtils.GetFiles("*.jz");
             var datedFiles = files.Where(f => DateTimeFromFileName(f) != DateTime.MinValue).ToArray();
             var groupedDatedFiles = datedFiles.GroupBy(f => DateTimeFromFileName(f).Date);
 
@@ -290,39 +291,18 @@ namespace Jiranator
             {
                 if (!saved.Contains(datedFile))
                 {
-                    File.Delete(datedFile);
+                    FileUtils.Delete(datedFile);
                     rv++;
                 }
             }
             return rv;
-        }
-
-        static string _dir;
-        internal static string Dir
-        {
-            get
-            {
-                if (_dir != null)
-                    return _dir;
-                try
-                {
-                    _dir = FileUtils.GetDataPath();
-                    _dir = Path.Combine(_dir, "Jiranator");
-                    Directory.CreateDirectory(_dir);
-                }
-                catch (Exception)
-                {
-                    _dir = ".";
-                }
-                return _dir;
-            }
-        }
+        }   
 
         static public DateTimeOffset? OldCompare { get; set; }
 
-        static private string GetLatestFileName(SprintKey key, LoadEnum load)
+        static private async Task<string> GetLatestFileName(SprintKey key, LoadEnum load)
         {
-            var files = Directory.GetFiles(Dir, GetFileMask(key));
+            var files = await FileUtils.GetFiles(GetFileMask(key));
             IEnumerable<string> subFiles;
             if (load == LoadEnum.Yesterday)
             {
@@ -330,9 +310,8 @@ namespace Jiranator
                     subFiles = files.Where(f => DateTimeFromFileName(f) < DateTime.Today);
                 else
                 {
-                    string filename = GetFilename(key, OldCompare.Value);
+                    string filename = GetFile(key, OldCompare.Value);
                     subFiles = files.Where(f => f == filename);
-
                 }
             }
             else
@@ -348,24 +327,24 @@ namespace Jiranator
             return key.ToFilename() + "-*.jz";
         }
 
-        public static string GetFilename(SprintKey key, DateTimeOffset timestamp)
+        public static string GetFile(SprintKey key, DateTimeOffset timestamp)
         {
-            return GetFilename(key.ToFilename(), timestamp);
+            return GetFile(key.ToFilename(), timestamp);
         }
 
-        public static string GetFilename(string filenameStub, DateTimeOffset timestamp)
+        public static string GetFile(string filenameStub, DateTimeOffset timestamp)
         {
-            return Path.Combine(Dir, filenameStub + "-" + timestamp.ToString("yyyyMMdd HHmmss") + ".jz");
+            return filenameStub + "-" + timestamp.ToString("yyyyMMdd HHmmss") + ".jz";
         }
 
         public static void WriteResults(string filename, string str)
         {
-            File.WriteAllText(Path.Combine(Dir, filename), str);
+            FileUtils.WriteAllText(filename, str);
         }
 
         public static DateTimeOffset DateTimeFromFileName(string filename)
         {
-            var parts = Path.GetFileNameWithoutExtension(filename).Split("-".ToCharArray());
+            var parts = System.IO.Path.GetFileNameWithoutExtension(filename).Split("-".ToCharArray());
             var rv = DateTimeOffset.MinValue;
             try
             {
@@ -379,37 +358,37 @@ namespace Jiranator
 
         internal static void Write(string filenameStub, string str)
         {
-            var name = GetFilename(filenameStub, DateTimeOffset.Now);
+            var name = GetFile(filenameStub, DateTimeOffset.Now);
             var compressed = ZipStr(str);
-            File.WriteAllBytes(name, compressed);
+            FileUtils.WriteAllBytes(name, compressed);
             if (_saveUncompressedCopy)   // write an uncompressed copy
             {
-                name = Path.ChangeExtension(name, ".json");
-                File.WriteAllText(name, str);
+                name = System.IO.Path.ChangeExtension(name, ".json");
+                FileUtils.WriteAllText(name, str);
             }
         }
 
-        internal static string Read(SprintKey sprintKey, LoadEnum load, out DateTimeOffset dt)
+        internal static async Task<Tuple<string, DateTimeOffset>> Read(SprintKey sprintKey, LoadEnum load)
         {
-            var filename = GetLatestFileName(sprintKey, load);
-            dt = DateTimeOffset.MinValue;
+            var filename = await GetLatestFileName(sprintKey, load);
             if (filename == null)
                 return null;
-            dt = JiraAccessFile.DateTimeFromFileName(filename);
-            var compressed = File.ReadAllBytes(filename);
-            return UnZipStr(compressed);
+            var dt = JiraFileAccess.DateTimeFromFileName(filename);
+            var compressed = await FileUtils.ReadAllBytes(filename);
+            var str = UnZipStr(compressed);
+            return new Tuple<string, DateTimeOffset>(str, dt);
         }
 
 
         public static byte[] ZipStr(String str)
         {
-            using (MemoryStream output = new MemoryStream())
+            using (var output = new System.IO.MemoryStream())
             {
                 using (DeflateStream gzip =
                   new DeflateStream(output, CompressionMode.Compress))
                 {
-                    using (StreamWriter writer =
-                      new StreamWriter(gzip, System.Text.Encoding.UTF8))
+                    using (var writer =
+                      new System.IO.StreamWriter(gzip, System.Text.Encoding.UTF8))
                     {
                         writer.Write(str);
                     }
@@ -421,13 +400,13 @@ namespace Jiranator
 
         public static string UnZipStr(byte[] input)
         {
-            using (MemoryStream inputStream = new MemoryStream(input))
+            using (var inputStream = new System.IO.MemoryStream(input))
             {
-                using (DeflateStream gzip =
+                using (var gzip =
                   new DeflateStream(inputStream, CompressionMode.Decompress))
                 {
-                    using (StreamReader reader =
-                      new StreamReader(gzip, System.Text.Encoding.UTF8))
+                    using (var reader =
+                      new System.IO.StreamReader(gzip, System.Text.Encoding.UTF8))
                     {
                         return reader.ReadToEnd();
                     }
@@ -437,138 +416,34 @@ namespace Jiranator
     }
     public static class JiraHttpAccess
     {
-        public static string GetSprintLive(string project, string sprint, bool showError)
+        public static async Task<string> GetSprintLiveAsync(string project, string sprint, bool showError)
         {
-            var rv = HttpAccess.HttpGet(JiraAccess.GetSprintUri(project, sprint), showError);
+            var rv = await HttpAccess.HttpGetAsync(JiraAccess.GetSprintUri(project, sprint), showError);
+            JiraFileAccess.Write(new SprintKey(project, sprint).ToFilename(), rv);
+            return rv;
+        }
+        public static async Task<string> GetSprintLive(string project, string sprint, bool showError)
+        {
+            var rv = await HttpAccess.HttpGetAsync(JiraAccess.GetSprintUri(project, sprint), showError);
             //var rv = HttpAccess.HttpGet(JiraAccess.GetSprintUri(project, sprint), showError);
             //File.WriteAllLines("search.fancy.json", SplitLinesDeep(str));
-            JiraAccessFile.Write(new SprintKey(project, sprint).ToFilename(), rv);
+            JiraFileAccess.Write(new SprintKey(project, sprint).ToFilename(), rv);
             return rv;
         }
-        public static string GetEpicsLive(string project, bool showError, bool saveFile = true)
+        public static async Task<string> GetEpicsLive(string project, bool showError, bool saveFile = true)
         {
-            var rv = HttpAccess.HttpGet(JiraAccess.GetEpicsUri(project), showError);
+            var rv = await HttpAccess.HttpGetAsync(JiraAccess.GetEpicsUri(project), showError);
             if (saveFile)
-                JiraAccessFile.Write(project + "-Epics", rv);
+                JiraFileAccess.Write(project + "-Epics", rv);
             return rv;
         }
 
-        internal static string GetEpicsIssuesLive(string epicKey, bool showError, bool saveFile = true)
+        internal static async Task<string> GetEpicsIssuesLive(string epicKey, bool showError, bool saveFile = true)
         {
-            var rv = HttpAccess.HttpGet(JiraAccess.GetIssuesForEpicUri(epicKey), showError);
+            var rv = await HttpAccess.HttpGetAsync(JiraAccess.GetIssuesForEpicUri(epicKey), showError);
             if (saveFile)
-                JiraAccessFile.Write("Epic-" + epicKey + "-Issues", rv);
+                JiraFileAccess.Write("Epic-" + epicKey + "-Issues", rv);
             return rv;
         }
-    }
-
-    public static class HttpAccess
-    {
-        internal static string HttpGet(string url, bool showError)
-        {
-            var source = JiraAccess.DetermineSource(url);
-            string result = null;
-            try
-            {
-                var request = WebRequest.Create(url) as HttpWebRequest;
-                request.ContentType = "application/json";
-                request.Method = "GET";
-                request.Headers.Add("Authorization", "Basic " + EncodedCredentials(source));
-                using (var resp = request.GetResponse() as HttpWebResponse)
-                {
-                    var reader = new StreamReader(resp.GetResponseStream());
-                    result = reader.ReadToEnd();
-                }
-            }
-            catch (Exception exc)
-            {
-                if (showError)
-                    MessageBox.Show(exc.Message);
-            }
-
-            return result;
-        }
-
-        internal static string HttpPut(string url, string json)
-        {
-            var source = JiraAccess.DetermineSource(url);
-            if (source == JiraSourceEnum.Omnitracs)
-                return "Cannot edit Omnitracs Jira";
-
-            try
-            {
-                var request = WebRequest.Create(url)
-                                     as HttpWebRequest;
-                request.ContentType = "application/json";
-                request.Method = "PUT";
-
-                using (var streamWriter = new StreamWriter(request.GetRequestStream()))
-                {
-                    streamWriter.Write(json);
-                }
-
-                request.Headers.Add("Authorization", "Basic " + EncodedCredentials(source));
-                string result = null;
-                using (var resp = request.GetResponse() as HttpWebResponse)
-                {
-                    var reader = new StreamReader(resp.GetResponseStream());
-                    result = reader.ReadToEnd();
-                }
-
-                return result;
-
-            }
-            catch (Exception exc)
-            {
-                return exc.Message;
-            }
-        }
-
-        internal static string HttpPost(string url, string json)
-        {
-            var source = JiraAccess.DetermineSource(url);
-            if (source == JiraSourceEnum.Omnitracs)
-                return "Cannot edit Omnitracs Jira";
-            try
-            {
-                var request = WebRequest.Create(url)
-                                     as HttpWebRequest;
-                request.ContentType = "application/json";
-                request.Method = "POST";
-
-                using (var streamWriter = new StreamWriter(request.GetRequestStream()))
-                {
-                    streamWriter.Write(json);
-                }
-
-                request.Headers.Add("Authorization", "Basic " + EncodedCredentials(source));
-
-                string result = null;
-                using (var resp = request.GetResponse() as HttpWebResponse)
-                {
-                    var reader = new StreamReader(resp.GetResponseStream());
-                    result = reader.ReadToEnd();
-                }
-
-                return result;
-
-            }
-            catch (Exception exc)
-            {
-                return exc.Message;
-            }
-        }
-
-        static string EncodedCredentials(JiraSourceEnum source)
-        {
-            var rv = "";
-            if (source == JiraSourceEnum.SDLC)
-                rv = JiraAccess.GetEncodedCredentials("orashkevych", "roadnet");
-            else //if (source == JiraSourceEnum.Omnitracs)
-                rv = JiraAccess.GetEncodedCredentials("dfrancis", "mibos");
-            return rv;
-        }
-
-
     }
 }
