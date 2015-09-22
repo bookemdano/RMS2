@@ -64,6 +64,7 @@ namespace JiraShare
             Remaining = other.Remaining;
             Status = other.Status;
             Assignee = other.Assignee;
+            Team = other.Team;
             Sprint = other.Sprint;
             OldStatus = other.OldStatus;
             OldCalcedStatus = other.OldCalcedStatus;
@@ -158,6 +159,8 @@ namespace JiraShare
 
         public string Parent { get; set; }
         public double StoryPoints { get; set; }
+        public string Team { get; private set; }
+
 
         public string ShortIssueType
         {
@@ -362,6 +365,11 @@ namespace JiraShare
                     if (double.TryParse(str, out d))
                         rv.StoryPoints = d;
                 }
+                if (fields[TeamField] != null && fields[TeamField].HasValues)
+                {
+                    var teamField = fields[TeamField];
+                    rv.Team = (string)teamField["value"];
+                }
                 rv.EpicLink = GetString(fields, EpicLinkField);
                 rv.EpicStatus = GetString(fields, EpicStatusField);
                 rv.CaseFiles = GetString(fields, CaseFilesField);
@@ -432,8 +440,9 @@ namespace JiraShare
                 }
                 return rv;
             }
-            catch (Exception)
+            catch (Exception exc)
             {
+                var msg = exc.Message;
                 throw;
             }
         }
@@ -585,7 +594,6 @@ namespace JiraShare
         }
         public JiraIssue ParentIssue { get; internal set; }
         public JiraSourceEnum Source { get; private set; } = JiraSourceEnum.SDLC;
-
         public static string ConvertToUrl(string text)
         {
             //text = text.Replace("%20", " ");
@@ -674,7 +682,9 @@ namespace JiraShare
         public static string EpicStatusField = "customfield_10010";
         public static string SprintField = "customfield_10007";
         public static string CaseFilesField = "customfield_10002";
-        
+        public static string TeamField = "customfield_11200";
+
+
         #endregion
 
     }

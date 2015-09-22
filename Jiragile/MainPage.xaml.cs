@@ -1,10 +1,12 @@
 ﻿using JiraOne;
 using JiraShare;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+using Windows.ApplicationModel.DataTransfer;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
@@ -92,21 +94,21 @@ namespace Jiragile
                 _jiraSet.SetSprintName(sprintKey);
             }
 
-            var issues = RefreshIssues(_jiraSet, entSearch.Text, false, ShowStatus);
+            var issues = CreateIssueVms(_jiraSet, entSearch.Text, false, ShowStatus);
             lstIssues.Items.Clear();
             foreach (var issue in issues.OrderBy(i => i.CalcedStatus))
                 lstIssues.Items.Add(new IssueControl(issue));
             staStatus.Text = "Updated " + _jiraSet.RetrieveTime.RelativeTime();
             if (bartglChart.IsChecked == true)
             {
-                canvas.Visibility = Visibility.Visible;
+                canvas.Visibility = UIUtils.IsVisible(true);
                 rowChart.Height = new GridLength(.5, GridUnitType.Star);
                 var stats = await SprintStats.ReadStats(_jiraSet);
                 var grapher = new SprintGrapher(canvas, stats, false, true);
             }
             else
             {
-                canvas.Visibility = Visibility.Collapsed;
+                canvas.Visibility = UIUtils.IsVisible(false);
                 rowChart.Height = new GridLength(0);
             }
         }
@@ -117,7 +119,7 @@ namespace Jiragile
             Refresh(LoadEnum.LiveAlways);
         }
 
-        private static ObservableCollection<JiraIssueViewModel> RefreshIssues(JiraSet jiraSet, string filter, bool showSubtasks, ShowStatusEnum showStatus)
+        private static ObservableCollection<JiraIssueViewModel> CreateIssueVms(JiraSet jiraSet, string filter, bool showSubtasks, ShowStatusEnum showStatus)
         {
             var rv = new ObservableCollection<JiraIssueViewModel>();
             foreach (var issue in jiraSet.Issues)   //.Where(i => i.IsSubtask == false))
@@ -233,9 +235,9 @@ namespace Jiragile
                     tools = Tools.Filter;
             }
 
-            pnlSprint.Visibility = (tools == Tools.Sprint) ? Visibility.Visible : Visibility.Collapsed;
-            pnlFilter.Visibility = (tools == Tools.Filter) ? Visibility.Visible : Visibility.Collapsed;
-            pnlSearch.Visibility = (tools == Tools.Search) ? Visibility.Visible : Visibility.Collapsed;
+            pnlSprint.Visibility = UIUtils.IsVisible(tools == Tools.Sprint);
+            pnlFilter.Visibility = UIUtils.IsVisible(tools == Tools.Filter);
+            pnlSearch.Visibility = UIUtils.IsVisible(tools == Tools.Search);
             bartglSprint.IsChecked = (tools == Tools.Sprint);
             bartglFilter.IsChecked = (tools == Tools.Filter);
             bartglSearch.IsChecked = (tools == Tools.Search);
@@ -290,7 +292,7 @@ namespace Jiragile
             if (JiraIssue.IsIssueKey(text))
                 url = JiraAccess.FindIssueByKey(source, text);
             else
-                url = JiraAccess.SearchIssuesUri(source, text);
+                url = JiraAccess.SearchIssuesUri(source, text + "*");
             var str = await HttpAccess.HttpGetAsync(url, true);
             if (str == null)
                 return null;
@@ -316,5 +318,90 @@ namespace Jiragile
         {
             Refresh(LoadEnum.Latest);
         }
+
+        JiraIssueViewModel SelectedIssue
+        {
+            get
+            {
+                var issueControl = lstIssues.SelectedItem as IssueControl;
+                return issueControl?.Tag as JiraIssueViewModel;
+            }
+        }
+
+        private string Project
+        {
+            get
+            {
+                var parts = entSprint.Text.Split(" -".ToCharArray());
+                return parts[0];
+            }
+        }
+
+        private async void bartglCopyFromOmni_Click(object sender, RoutedEventArgs e)
+        {
+            var issue = SelectedIssue;
+            if (issue == null)
+                return;
+            var newIssues = new List<JiraIssue>();
+            var issues = new List<JiraIssueViewModel>() { issue };
+            foreach (var omniIssue in issues.Where(i => !i.IsSubtask))
+            {
+                var str = await HttpAccess.HttpPostAsync(JiraAccess.IssueUri(JiraSourceEnum.SDLC), JiraAccess.GetNewTaskBody(Project, omniIssue));
+                JiraFileAccess.WriteResults("new.json", str);
+                var json = JObject.Parse(str);
+                var self = (string)json["self"];
+                await HttpAccess.HttpPostAsync(self + @"/remotelink", JiraAccess.GetNewLinkBody(omniIssue));
+                newIssues.AddRange(await FindIssues(JiraSourceEnum.SDLC, (string)json["key"]));
+            }
+            AddIssues(newIssues);
+
+            Refresh(LoadEnum.Latest);
+        }
+
+        private void lstIssues_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            cmdActions.Visibility = UIUtils.IsVisible(e.AddedItems.Count() > 0);
+        }
+
+        private void bartglCopy_Click(object sender, RoutedEventArgs e)
+        {
+            var item = SelectedIssue;
+            bool includeMeta = true;
+
+            var dataPackage = new DataPackage();
+            var html = item.HtmlDescription(true, true);
+
+            dataPackage.SetText(item.Description(true, true, includeMeta));
+            dataPackage.SetHtmlFormat(HtmlWrap(html));
+            
+            Clipboard.SetContent(dataPackage);
+        }
+
+        static private string HtmlWrap(string text)
+        {
+
+            string template = "Version:1.0" + System.Environment.NewLine +
+                    @"StartHTML:000125" + System.Environment.NewLine +
+                    @"EndHTML:00EH00" + System.Environment.NewLine +
+                    @"StartFragment:000209" + System.Environment.NewLine +
+                    @"EndFragment:00EF00" + System.Environment.NewLine +
+                    @"SourceURL:file:///C:/temp/test.htm" + System.Environment.NewLine +
+                    @"<HTML>" + System.Environment.NewLine +
+                    @"<head>" + System.Environment.NewLine +
+                    @"<title>HTML clipboard</title>" + System.Environment.NewLine +
+                    @"</head>" + System.Environment.NewLine +
+                    @"<body>" + System.Environment.NewLine +
+                    @"<!--StartFragment-->THE TEXT<!--EndFragment-->" + System.Environment.NewLine +
+                    @"</body>" + System.Environment.NewLine +
+                    "</html>";
+
+            string rv = template.Replace("THE TEXT", text);
+            //rv = template.Replace("THE TEXT", @"<b>Hello!</b>");
+
+            rv = rv.Replace("00EH00", rv.Length.ToString("000000"));
+            rv = rv.Replace("00EF00", rv.IndexOf("<!--EndFragment-->").ToString("000000"));
+            return rv;
+        }
+
     }
 }

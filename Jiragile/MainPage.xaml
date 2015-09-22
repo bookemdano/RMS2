@@ -16,10 +16,11 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <CommandBar>
-            <AppBarToggleButton Name="bartglSprint" Click="bartglTools_Click" Icon="Admin"  Content="Sprint"/>
-            <AppBarToggleButton Name="bartglFilter" Click="bartglTools_Click" Icon="Filter" Content="Filter"/>
-            <AppBarToggleButton Name="bartglSearch" Click="bartglTools_Click" Icon="Find" Content="Search"/>
-            <AppBarToggleButton Name="bartglChart" Click="bartglChart_Click" Icon="Map" Content="Chart"/>
+            <AppBarToggleButton Name="bartglSprint" Click="bartglTools_Click" Icon="Admin"  Label="Sprint"/>
+            <AppBarToggleButton Name="bartglFilter" Click="bartglTools_Click" Icon="Filter" Label="Filter"/>
+            <AppBarToggleButton Name="bartglSearch" Click="bartglTools_Click" Icon="Find" Label="Search"/>
+            <AppBarSeparator/>
+            <AppBarToggleButton Name="bartglChart" Click="bartglChart_Click" Icon="Map" Label="Chart"/>
         </CommandBar>
         <Grid Name="pnlSprint" Grid.Row="1" Visibility="Collapsed">
             <Grid.ColumnDefinitions>
@@ -47,8 +48,12 @@
             <ToggleButton Name="tglShowTesting" IsChecked="True" Click="chkShow_Click">Testing</ToggleButton>
             <ToggleButton Name="tglShowResolved" IsChecked="True" Click="chkShow_Click">Resolved</ToggleButton>
         </StackPanel>
-        <ListView Name="lstIssues" SelectionMode="Extended" Grid.Row="2"/>
+        <ListView Name="lstIssues" SelectionMode="Extended" Grid.Row="2" SelectionChanged="lstIssues_SelectionChanged"/>
         <Canvas Name="canvas" Grid.Row="3"/>
-        <TextBlock Name="staStatus" Grid.Row="4"/>
+        <CommandBar Name="cmdActions" Grid.Row="4" Visibility="Collapsed">
+            <AppBarButton Click="bartglCopy_Click" Icon="Copy" Label="Copy"/>
+            <AppBarButton Click="bartglCopyFromOmni_Click" Icon="MoveToFolder" Label="Clone From Omni"/>
+        </CommandBar>
+        <TextBlock Name="staStatus" Grid.Row="4" HorizontalAlignment="Left" VerticalAlignment="Bottom"/>
     </Grid>
 </Page>
