@@ -1,5 +1,6 @@
 ﻿using JiraOne;
 using JiraShare;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -7,6 +8,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using Windows.ApplicationModel.DataTransfer;
+using Windows.System;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
@@ -78,7 +80,12 @@ namespace Jiragile
                             return;
                         }
                     }
-                    str = await JiraHttpAccess.GetSprintLiveAsync(sprintKey.Project, sprintKey.Sprint, false);
+                    str = await JiraHttpAccess.GetSprintLiveAsync(sprintKey.Project, sprintKey.Sprint, true);
+                    if (str.StartsWith("ERROR"))
+                    {
+                        staStatus.Text = str;
+                        return;
+                    }
                     dt = DateTimeOffset.Now;
                 }
                 else
@@ -267,13 +274,19 @@ namespace Jiragile
         {
             if (string.IsNullOrWhiteSpace(entSearch.Text))
                 return;
-
-            var issues = await FindIssues(source, entSearch.Text);
-            if (issues == null)
-                return;
-            AddIssues(issues);
-            Refresh(LoadEnum.Latest);
-            staStatus.Text = "Searched for " + entSearch.Text;
+            try
+            {
+                var issues = await FindIssues(source, entSearch.Text);
+                if (issues == null)
+                    return;
+                AddIssues(issues);
+                Refresh(LoadEnum.Latest);
+                staStatus.Text = "Searched for " + entSearch.Text;
+            }
+            catch (Exception exc)
+            {
+                staStatus.Text = exc.Message;
+            }
         }
 
         private void AddIssues(IEnumerable<JiraIssue> issues)
@@ -298,7 +311,8 @@ namespace Jiragile
                 return null;
             try
             {
-                JiraFileAccess.WriteResults(text + ".json", str);
+                var jobject = JObject.Parse(str);
+                await JiraFileAccess.WriteResults(text + ".json", JsonConvert.SerializeObject(jobject, Formatting.Indented));
             }
             catch (Exception)
             {
@@ -347,7 +361,7 @@ namespace Jiragile
             foreach (var omniIssue in issues.Where(i => !i.IsSubtask))
             {
                 var str = await HttpAccess.HttpPostAsync(JiraAccess.IssueUri(JiraSourceEnum.SDLC), JiraAccess.GetNewTaskBody(Project, omniIssue));
-                JiraFileAccess.WriteResults("new.json", str);
+                await JiraFileAccess.WriteResults("new.json", str);
                 var json = JObject.Parse(str);
                 var self = (string)json["self"];
                 await HttpAccess.HttpPostAsync(self + @"/remotelink", JiraAccess.GetNewLinkBody(omniIssue));
@@ -366,14 +380,17 @@ namespace Jiragile
         private void bartglCopy_Click(object sender, RoutedEventArgs e)
         {
             var item = SelectedIssue;
-            bool includeMeta = true;
+            CopyToClipboard(item, true);
+        }
 
+        private static void CopyToClipboard(JiraIssueViewModel item, bool includeMeta)
+        {
             var dataPackage = new DataPackage();
             var html = item.HtmlDescription(true, true);
 
             dataPackage.SetText(item.Description(true, true, includeMeta));
             dataPackage.SetHtmlFormat(HtmlWrap(html));
-            
+
             Clipboard.SetContent(dataPackage);
         }
 
@@ -403,5 +420,11 @@ namespace Jiragile
             return rv;
         }
 
+        private async void bartglMail_Click(object sender, RoutedEventArgs e)
+        {
+            var issue = SelectedIssue;
+            CopyToClipboard(issue, true);
+            await Launcher.LaunchUriAsync(new Uri(issue.MailToLink()));
+        }
     }
 }

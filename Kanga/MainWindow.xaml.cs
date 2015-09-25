@@ -61,7 +61,6 @@ namespace Kanga
             cmbProject.Text = ProjectEnum.RTS.ToString();
         }
 
-        string _none = "-none-";
         string _delimiter = ";";
         private void Kangate(JiraSourceEnum source, ProjectEnum project, string version, bool consoleMode)
         {

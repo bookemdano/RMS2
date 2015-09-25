@@ -338,9 +338,9 @@ namespace JiraShare
             return filenameStub + "-" + timestamp.ToString("yyyyMMdd HHmmss") + ".jz";
         }
 
-        public static void WriteResults(string filename, string str)
+        public static async Task WriteResults(string filename, string str)
         {
-            FileUtils.WriteAllText(filename, str);
+            await FileUtils.WriteAllText(filename, str);
         }
 
         public static DateTimeOffset DateTimeFromFileName(string filename)
@@ -357,7 +357,7 @@ namespace JiraShare
             return rv;
         }
 
-        internal static void Write(string filenameStub, string str)
+        internal static async void Write(string filenameStub, string str)
         {
             var name = GetFile(filenameStub, DateTimeOffset.Now);
             var compressed = ZipStr(str);
@@ -365,7 +365,7 @@ namespace JiraShare
             if (_saveUncompressedCopy)   // write an uncompressed copy
             {
                 name = System.IO.Path.ChangeExtension(name, ".json");
-                FileUtils.WriteAllText(name, str);
+                await FileUtils.WriteAllText(name, str);
             }
         }
 
@@ -417,10 +417,11 @@ namespace JiraShare
     }
     public static class JiraHttpAccess
     {
-        public static async Task<string> GetSprintLiveAsync(string project, string sprint, bool showError)
+        public static async Task<string> GetSprintLiveAsync(string project, string sprint, bool returnError)
         {
-            var rv = await HttpAccess.HttpGetAsync(JiraAccess.GetSprintUri(project, sprint), showError);
-            JiraFileAccess.Write(new SprintKey(project, sprint).ToFilename(), rv);
+            var rv = await HttpAccess.HttpGetAsync(JiraAccess.GetSprintUri(project, sprint), returnError);
+            if (!rv.StartsWith("ERROR:"))
+                JiraFileAccess.Write(new SprintKey(project, sprint).ToFilename(), rv);
             return rv;
         }
         public static async Task<string> GetSprintLive(string project, string sprint, bool showError)
