@@ -6,9 +6,11 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
+using Windows.UI.Text;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
@@ -36,7 +38,8 @@ namespace Jiragile
             FileUtils.GetSetting(bartglSearch, false);
             bartglTools_Click(null, null);
 
-            FileUtils.GetSetting(bartglChart, true);
+            FileUtils.GetSetting(tglChart, false);
+            FileUtils.GetSetting(tglDetail, true);
 
             FileUtils.GetSetting(entSprint, "AP 2015.R4.S5.Mobile");
 
@@ -106,7 +109,7 @@ namespace Jiragile
             foreach (var issue in issues.OrderBy(i => i.CalcedStatus))
                 lstIssues.Items.Add(new IssueControl(issue));
             staStatus.Text = "Updated " + _jiraSet.RetrieveTime.RelativeTime();
-            if (bartglChart.IsChecked == true)
+            if (tglChart.IsChecked == true)
             {
                 canvas.Visibility = UIUtils.IsVisible(true);
                 rowChart.Height = new GridLength(.5, GridUnitType.Star);
@@ -375,8 +378,54 @@ namespace Jiragile
         private void lstIssues_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             cmdActions.Visibility = UIUtils.IsVisible(e.AddedItems.Count() > 0);
+
+            ShowSelectedDetails();
         }
 
+        private void ShowSelectedDetails()
+        {
+            var item = SelectedIssue;
+            if (item != null && tglDetail.IsChecked == true)
+            {
+                colDetail.Width = new GridLength(.25, GridUnitType.Star);
+                pnlDetails.Children.Clear();
+                var props = typeof(JiraIssue).GetProperties();
+                foreach (var prop in props)
+                {
+                    var str = prop.GetValue(item, null)?.ToString();
+                    if (string.IsNullOrWhiteSpace(str) || str.StartsWith("System.") || str.StartsWith("Windows."))
+                        continue;
+                    AddDetail(prop.Name, str);
+                }
+            }
+            else
+                colDetail.Width = new GridLength(0);
+        }
+
+        enum DetailDisplayEnum
+        {
+            None,
+            Label
+        }
+
+        private void AddDetail(string label, string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return;
+            AddDetail(label + ":", DetailDisplayEnum.Label);
+            AddDetail(value, DetailDisplayEnum.None);
+        }
+        private void AddDetail(string str, DetailDisplayEnum detailDisplay)
+        {
+            if (string.IsNullOrWhiteSpace(str))
+                return;
+            var sta = new TextBlock();
+            sta.Text = str;
+            if (detailDisplay == DetailDisplayEnum.Label)
+                sta.FontWeight = FontWeights.Bold;
+            sta.TextWrapping = TextWrapping.Wrap;
+            pnlDetails.Children.Add(sta);
+        }
         private void bartglCopy_Click(object sender, RoutedEventArgs e)
         {
             var item = SelectedIssue;
@@ -425,6 +474,15 @@ namespace Jiragile
             var issue = SelectedIssue;
             CopyToClipboard(issue, true);
             await Launcher.LaunchUriAsync(new Uri(issue.MailToLink()));
+        }
+        private void tglShow_Click(object sender, RoutedEventArgs e)
+        {
+            FileUtils.SaveSetting(sender as AppBarToggleButton);
+            var tgl = (sender as AppBarToggleButton);
+            if (tgl == tglDetail)
+                ShowSelectedDetails();
+            else
+                Refresh(LoadEnum.Latest);
         }
     }
 }

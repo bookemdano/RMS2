@@ -20,7 +20,8 @@
             <AppBarToggleButton Name="bartglFilter" Click="bartglTools_Click" Icon="Filter" Label="Filter"/>
             <AppBarToggleButton Name="bartglSearch" Click="bartglTools_Click" Icon="Find" Label="Search"/>
             <AppBarSeparator/>
-            <AppBarToggleButton Name="bartglChart" Click="bartglChart_Click" Icon="Map" Label="Chart"/>
+            <AppBarToggleButton Name="tglChart" Click="tglShow_Click" Icon="Map" Label="Chart"/>
+            <AppBarToggleButton Name="tglDetail" Click="tglShow_Click" Icon="List" Label="Details"/>
         </CommandBar>
         <Grid Name="pnlSprint" Grid.Row="1" Visibility="Collapsed">
             <Grid.ColumnDefinitions>
@@ -48,7 +49,16 @@
             <ToggleButton Name="tglShowTesting" IsChecked="True" Click="chkShow_Click">Testing</ToggleButton>
             <ToggleButton Name="tglShowResolved" IsChecked="True" Click="chkShow_Click">Resolved</ToggleButton>
         </StackPanel>
-        <ListView Name="lstIssues" SelectionMode="Extended" Grid.Row="2" SelectionChanged="lstIssues_SelectionChanged"/>
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition x:Name="colDetail" Width="0"/>
+            </Grid.ColumnDefinitions>
+            <ListView Name="lstIssues" SelectionChanged="lstIssues_SelectionChanged" Grid.Column="0"/>
+            <ScrollViewer Grid.Column="1">
+                <StackPanel Name="pnlDetails"/>
+            </ScrollViewer>
+        </Grid>
         <Canvas Name="canvas" Grid.Row="3"/>
         <CommandBar Name="cmdActions" Grid.Row="4" Visibility="Collapsed">
             <AppBarButton Click="bartglCopy_Click" Icon="Copy" Label="Copy"/>
