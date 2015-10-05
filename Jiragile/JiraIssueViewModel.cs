@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using Windows.UI;
 using Windows.UI.Xaml.Media;
+using System;
 
 namespace JiraOne
 {
@@ -97,6 +98,16 @@ namespace JiraOne
                     return "T";
                 else
                     return CalcedStatus.ToString()[0].ToString();
+            }
+        }
+
+        internal void BrowseTo()
+        {
+            UIUtils.StartProcess(LinkDirect);
+            if (IsFromOmni)
+            {
+                var omniLink = JiraAccess.LinkDirect(JiraSourceEnum.Omnitracs) + OmniKey;
+                UIUtils.StartProcess(omniLink);
             }
         }
 

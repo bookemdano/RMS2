@@ -484,5 +484,10 @@ namespace Jiragile
             else
                 Refresh(LoadEnum.Latest);
         }
+
+        private void btnOpen_Click(object sender, RoutedEventArgs e)
+        {
+            SelectedIssue?.BrowseTo();
+        }
     }
 }
