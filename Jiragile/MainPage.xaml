@@ -16,9 +16,12 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <CommandBar>
-            <AppBarToggleButton Name="bartglSprint" Click="bartglTools_Click" Icon="Admin"  Label="Sprint"/>
-            <AppBarToggleButton Name="bartglFilter" Click="bartglTools_Click" Icon="Filter" Label="Filter"/>
-            <AppBarToggleButton Name="bartglSearch" Click="bartglTools_Click" Icon="Find" Label="Search"/>
+            <AppBarButton Name="btnRefresh" Click="btnGo_Click" Icon="Refresh" Label="Refresh"/>
+            <AppBarSeparator/>
+            <AppBarToggleButton Name="tglSprint" Click="tglTools_Click" Icon="Admin"  Label="Sprint"/>
+            <AppBarToggleButton Name="tglFilter" Click="tglTools_Click" Icon="Filter" Label="Filter"/>
+            <AppBarToggleButton Name="tglSort" Click="tglTools_Click" Icon="Sort" Label="Sort"/>
+            <AppBarToggleButton Name="tglSearch" Click="tglTools_Click" Icon="Find" Label="Search"/>
             <AppBarSeparator/>
             <AppBarToggleButton Name="tglChart" Click="tglShow_Click" Icon="Map" Label="Chart"/>
             <AppBarToggleButton Name="tglDetail" Click="tglShow_Click" Icon="List" Label="Details"/>
@@ -44,10 +47,15 @@
             <Button Click="btnSearchClear_Click" Grid.Column="3">Clear</Button>
         </Grid>
         <StackPanel Name="pnlFilter" Orientation="Horizontal" Grid.Row="1" Visibility="Collapsed">
-            <ToggleButton Name="tglShowOther" IsChecked="True" Click="chkShow_Click">Other</ToggleButton>
-            <ToggleButton Name="tglShowOnHold" IsChecked="True" Click="chkShow_Click">OnHold</ToggleButton>
-            <ToggleButton Name="tglShowTesting" IsChecked="True" Click="chkShow_Click">Testing</ToggleButton>
-            <ToggleButton Name="tglShowResolved" IsChecked="True" Click="chkShow_Click">Resolved</ToggleButton>
+            <ToggleButton Name="tglShowOther" IsChecked="True" Click="tglShow_Click">Other</ToggleButton>
+            <ToggleButton Name="tglShowOnHold" IsChecked="True" Click="tglShow_Click">OnHold</ToggleButton>
+            <ToggleButton Name="tglShowTesting" IsChecked="True" Click="tglShow_Click">Testing</ToggleButton>
+            <ToggleButton Name="tglShowResolved" IsChecked="True" Click="tglShow_Click">Resolved</ToggleButton>
+        </StackPanel>
+        <StackPanel Name="pnlSort" Orientation="Horizontal" Grid.Row="1" Visibility="Collapsed">
+            <ToggleButton Name="tglSortByStatus" IsChecked="True" Click="tglSort_Click">Status</ToggleButton>
+            <ToggleButton Name="tglSortByVersion" IsChecked="False" Click="tglSort_Click">Version</ToggleButton>
+            <ToggleButton Name="tglSortByAssignee" IsChecked="False" Click="tglSort_Click">Assignee</ToggleButton>
         </StackPanel>
         <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
@@ -62,10 +70,13 @@
         <Canvas Name="canvas" Grid.Row="3"/>
         <CommandBar Name="cmdActions" Grid.Row="4" Visibility="Collapsed">
             <AppBarButton Click="btnOpen_Click" Icon="OpenLocal" Label="Open"/>
-            <AppBarButton Click="bartglCopy_Click" Icon="Copy" Label="Copy"/>
-            <AppBarButton Click="bartglCopyFromOmni_Click" Icon="MoveToFolder" Label="Clone From Omni"/>
-            <AppBarButton Click="bartglMail_Click" Icon="Mail" Label="Mail"/>
+            <AppBarButton Click="tglCopy_Click" Icon="Copy" Label="Copy"/>
+            <AppBarButton Click="tglCopyFromOmni_Click" Icon="MoveToFolder" Label="Clone From Omni"/>
+            <AppBarButton Click="tglMail_Click" Icon="Mail" Label="Mail"/>
         </CommandBar>
-        <TextBlock Name="staStatus" Grid.Row="4" HorizontalAlignment="Left" VerticalAlignment="Bottom"/>
+        <StackPanel Orientation="Horizontal" Grid.Row="4" >
+            <TextBlock Name="staCounts"/>
+            <TextBlock Name="staStatus"  Margin="2,0,0,0"/>
+        </StackPanel>
     </Grid>
 </Page>

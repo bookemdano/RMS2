@@ -159,7 +159,7 @@ namespace JiraShare
         public StatusEnum OldCalcedStatus { get; set; }
 
         public string Parent { get; set; }
-        public double StoryPoints { get; set; }
+        public int StoryPoints { get; set; }
         public string Team { get; private set; }
 
 
@@ -339,6 +339,12 @@ namespace JiraShare
             {
                 if (status == "ReadyforTesting")
                     rv = StatusEnum.TestReady;
+                else if (status == "WaitingforTest")
+                    rv = StatusEnum.TestReady;
+                else if (status == "Test")
+                    rv = StatusEnum.InTesting;
+                else
+                    rv = StatusEnum.Unknown;
             }
             return rv;
         }
@@ -364,7 +370,7 @@ namespace JiraShare
                     var str = (string)fields[StoryPointField];
                     double d;
                     if (double.TryParse(str, out d))
-                        rv.StoryPoints = d;
+                        rv.StoryPoints = (int) d;
                 }
                 if (fields[TeamField] != null && fields[TeamField].HasValues)
                 {

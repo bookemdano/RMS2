@@ -27,19 +27,31 @@ namespace Jiragile
         public MainPage()
         {
             this.InitializeComponent();
-            
-            FileUtils.GetSetting(tglShowOnHold, true);
-            FileUtils.GetSetting(tglShowOther, true);
-            FileUtils.GetSetting(tglShowResolved, true);
-            FileUtils.GetSetting(tglShowTesting, true);
+            _toolTgls = new List<ToggleButton>() { tglSprint, tglSearch, tglSort, tglFilter };
+            _sortTgls = new List<ToggleButton>() { tglSortByStatus, tglSortByVersion, tglSortByAssignee};
+            FileUtils.GetSetting(tglShowOnHold);
+            FileUtils.GetSetting(tglShowOther);
+            FileUtils.GetSetting(tglShowResolved);
+            FileUtils.GetSetting(tglShowTesting);
 
-            FileUtils.GetSetting(bartglSprint, false);
-            FileUtils.GetSetting(bartglFilter, true);
-            FileUtils.GetSetting(bartglSearch, false);
-            bartglTools_Click(null, null);
+            FileUtils.GetSetting(tglSortByStatus);
+            FileUtils.GetSetting(tglSortByVersion);
+            FileUtils.GetSetting(tglSortByAssignee);
 
-            FileUtils.GetSetting(tglChart, false);
-            FileUtils.GetSetting(tglDetail, true);
+            FileUtils.GetSetting(tglSprint);
+            FileUtils.GetSetting(tglFilter);
+            FileUtils.GetSetting(tglSort);
+            FileUtils.GetSetting(tglSearch);
+            foreach (var tgl in _toolTgls)
+            {
+                if (tgl.IsChecked == true)
+                {
+                    SelectTool(tgl);
+                    break;
+                }
+            }
+            FileUtils.GetSetting(tglChart);
+            FileUtils.GetSetting(tglDetail);
 
             FileUtils.GetSetting(entSprint, "AP 2015.R4.S5.Mobile");
 
@@ -94,8 +106,11 @@ namespace Jiragile
                 else
                 {
                     var tpl = await JiraFileAccess.Read(sprintKey, loadEnum);
-                    str = tpl.Item1;
-                    dt = tpl.Item2;
+                    if (tpl != null)
+                    {
+                        str = tpl.Item1;
+                        dt = tpl.Item2;
+                    }
                 }
                 if (string.IsNullOrWhiteSpace(str))
                     return;
@@ -106,9 +121,23 @@ namespace Jiragile
 
             var issues = CreateIssueVms(_jiraSet, entSearch.Text, false, ShowStatus);
             lstIssues.Items.Clear();
-            foreach (var issue in issues.OrderBy(i => i.CalcedStatus))
+            IOrderedEnumerable<JiraIssueViewModel> ordered;
+            var sort = GetSortOrder();
+            if (sort == SortEnum.Status)
+                ordered = issues.OrderBy(i => i.CalcedStatus);
+            else if (sort == SortEnum.Version)
+                ordered = issues.OrderBy(i => i.FixVersionsString);
+            else
+                ordered = issues.OrderBy(i => i.Assignee);
+
+            var totalStoryPoints = 0;
+            foreach (var issue in ordered)
+            {
+                totalStoryPoints += issue.StoryPoints;
                 lstIssues.Items.Add(new IssueControl(issue));
+            }
             staStatus.Text = "Updated " + _jiraSet.RetrieveTime.RelativeTime();
+            staCounts.Text = ordered.Count() + " stories " + totalStoryPoints + " story points";
             if (tglChart.IsChecked == true)
             {
                 canvas.Visibility = UIUtils.IsVisible(true);
@@ -204,59 +233,64 @@ namespace Jiragile
             return rv;
         }
 
-        private void chkShow_Click(object sender, RoutedEventArgs e)
-        {
-            FileUtils.SaveSetting(sender as ToggleButton);
-
-            Refresh(LoadEnum.Latest);
-        }
-
         private void Page_SizeChanged(object sender, SizeChangedEventArgs e)
         {
             Refresh(LoadEnum.Latest);
         }
-        private enum Tools
+        private enum ToolEnum
         {
             None,
             Sprint,
             Filter,
+            Sort,
             Search
         }
-        private void bartglTools_Click(object sender, RoutedEventArgs e)
+        private enum SortEnum
         {
-            var bartgl = sender as AppBarToggleButton;
-            if (bartgl == null) // to handle initial case
+            None,
+            Status,
+            Version,
+            Assignee
+        }
+        void ExclusiveCheck(List<ToggleButton> buttons, ToggleButton selected)
+        {
+            foreach (var button in buttons)
             {
-                if (bartglSprint.IsChecked == true)
-                    bartgl = bartglSprint;
-                else if (bartglSearch.IsChecked == true)
-                    bartgl = bartglSearch;
-                else 
-                    bartgl = bartglFilter;
-            }
-            var tools = Tools.None;
-            if (bartgl.IsChecked == true)
-            {
-                if (bartgl == bartglSprint)
-                    tools = Tools.Sprint;
-                else if (bartgl == bartglSearch)
-                    tools = Tools.Search;
+                if (button == selected)
+                    button.IsChecked = true;
                 else
-                    tools = Tools.Filter;
+                    button.IsChecked = false;
+                FileUtils.SaveSetting(button);
             }
-
-            pnlSprint.Visibility = UIUtils.IsVisible(tools == Tools.Sprint);
-            pnlFilter.Visibility = UIUtils.IsVisible(tools == Tools.Filter);
-            pnlSearch.Visibility = UIUtils.IsVisible(tools == Tools.Search);
-            bartglSprint.IsChecked = (tools == Tools.Sprint);
-            bartglFilter.IsChecked = (tools == Tools.Filter);
-            bartglSearch.IsChecked = (tools == Tools.Search);
-            FileUtils.SaveSetting(bartglSprint);
-            FileUtils.SaveSetting(bartglFilter);
-            FileUtils.SaveSetting(bartglSearch);
+            
+        }
+        List<ToggleButton> _toolTgls;
+        List<ToggleButton> _sortTgls;
+        private void tglTools_Click(object sender, RoutedEventArgs e)
+        {
+            SelectTool(sender as ToggleButton);
         }
 
-        private void bartglChart_Click(object sender, RoutedEventArgs e)
+        private void SelectTool(ToggleButton tgl)
+        {
+            var tools = ToolEnum.None;
+            if (tgl == tglSprint)
+                tools = ToolEnum.Sprint;
+            else if (tgl == tglSearch)
+                tools = ToolEnum.Search;
+            else if (tgl == tglSort)
+                tools = ToolEnum.Sort;
+            else
+                tools = ToolEnum.Filter;
+
+            ExclusiveCheck(_toolTgls, tgl);
+            pnlSprint.Visibility = UIUtils.IsVisible(tools == ToolEnum.Sprint);
+            pnlFilter.Visibility = UIUtils.IsVisible(tools == ToolEnum.Filter);
+            pnlSort.Visibility = UIUtils.IsVisible(tools == ToolEnum.Sort);
+            pnlSearch.Visibility = UIUtils.IsVisible(tools == ToolEnum.Search);
+        }
+
+        private void tglChart_Click(object sender, RoutedEventArgs e)
         {
             FileUtils.SaveSetting(sender as AppBarToggleButton);
             Refresh(LoadEnum.Latest);
@@ -354,7 +388,7 @@ namespace Jiragile
             }
         }
 
-        private async void bartglCopyFromOmni_Click(object sender, RoutedEventArgs e)
+        private async void tglCopyFromOmni_Click(object sender, RoutedEventArgs e)
         {
             var issue = SelectedIssue;
             if (issue == null)
@@ -426,7 +460,7 @@ namespace Jiragile
             sta.TextWrapping = TextWrapping.Wrap;
             pnlDetails.Children.Add(sta);
         }
-        private void bartglCopy_Click(object sender, RoutedEventArgs e)
+        private void tglCopy_Click(object sender, RoutedEventArgs e)
         {
             var item = SelectedIssue;
             CopyToClipboard(item, true);
@@ -469,7 +503,7 @@ namespace Jiragile
             return rv;
         }
 
-        private async void bartglMail_Click(object sender, RoutedEventArgs e)
+        private async void tglMail_Click(object sender, RoutedEventArgs e)
         {
             var issue = SelectedIssue;
             CopyToClipboard(issue, true);
@@ -477,8 +511,8 @@ namespace Jiragile
         }
         private void tglShow_Click(object sender, RoutedEventArgs e)
         {
-            FileUtils.SaveSetting(sender as AppBarToggleButton);
-            var tgl = (sender as AppBarToggleButton);
+            var tgl = (sender as ToggleButton);
+            FileUtils.SaveSetting(tgl);
             if (tgl == tglDetail)
                 ShowSelectedDetails();
             else
@@ -488,6 +522,23 @@ namespace Jiragile
         private void btnOpen_Click(object sender, RoutedEventArgs e)
         {
             SelectedIssue?.BrowseTo();
+        }
+
+        private void tglSort_Click(object sender, RoutedEventArgs e)
+        {
+            ExclusiveCheck(_sortTgls, sender as ToggleButton);
+            Refresh(LoadEnum.Latest);
+        }
+        private SortEnum GetSortOrder()
+        {
+            var sort = SortEnum.None;
+            if (tglSortByStatus.IsChecked == true)
+                sort = SortEnum.Status;
+            else if (tglSortByVersion.IsChecked == true)
+                sort = SortEnum.Version;
+            else if (tglSortByAssignee.IsChecked == true)
+                sort = SortEnum.Assignee;
+            return sort;
         }
     }
 }
