@@ -377,6 +377,10 @@ namespace JiraShare
                     var teamField = fields[TeamField];
                     rv.Team = (string)teamField["value"];
                 }
+                else if (fields[OmniTeamField] != null)
+                {
+                    rv.Team = (string)fields[OmniTeamField];
+                }
                 rv.EpicLink = GetString(fields, EpicLinkField);
                 rv.EpicStatus = GetString(fields, EpicStatusField);
                 rv.CaseFiles = GetString(fields, CaseFilesField);
@@ -690,6 +694,8 @@ namespace JiraShare
         public static string SprintField = "customfield_10007";
         public static string CaseFilesField = "customfield_10002";
         public static string TeamField = "customfield_11200";
+        public static string OmniTeamField = "customfield_10421";   // new Jira Team Filed
+        
 
 
         #endregion

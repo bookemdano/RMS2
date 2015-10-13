@@ -76,6 +76,7 @@ namespace Jiragile
         }
 
         JiraSet _jiraSet;
+        JiraSet _oldJiraSet;
         async void Refresh(LoadEnum loadEnum)
         {
             if (loadEnum != LoadEnum.Latest || _jiraSet == null)
@@ -102,6 +103,9 @@ namespace Jiragile
                         return;
                     }
                     dt = DateTimeOffset.Now;
+                    var tplOld = await JiraFileAccess.Read(sprintKey, LoadEnum.Yesterday);
+                    if (tplOld != null)
+                        _oldJiraSet = JiraSet.Parse(tplOld.Item1);
                 }
                 else
                 {
@@ -117,8 +121,10 @@ namespace Jiragile
                 _jiraSet = JiraSet.Parse(str);
                 _jiraSet.RetrieveTime = dt;
                 _jiraSet.SetSprintName(sprintKey);
+                if (_oldJiraSet != null)
+                    _jiraSet.UpdateOldStatus(_oldJiraSet);
             }
-
+            UpdateCounts(_jiraSet);
             var issues = CreateIssueVms(_jiraSet, entSearch.Text, false, ShowStatus);
             lstIssues.Items.Clear();
             IOrderedEnumerable<JiraIssueViewModel> ordered;
@@ -152,9 +158,33 @@ namespace Jiragile
             }
         }
 
+        private void UpdateCounts(JiraSet _jiraSet)
+        {
+            int resolved = 0;
+            int testing = 0;
+            int blocked = 0;
+            int other = 0;
+            foreach (var issue in _jiraSet.Issues)
+            {
+                if (issue.IsResolved)
+                    resolved++;
+                else if(issue.IsTesting)
+                    testing++;
+                else if(issue.IsOnHold)
+                    blocked++;
+                else
+                    other++;
+            }
+            tglShowResolved.Content = "Resolved-" + resolved;
+            tglShowTesting.Content = "Testing-" + testing;
+            tglShowOnHold.Content = "Blocked-" + blocked;
+            tglShowOther.Content = "Other-" + other;
+        }
+
         private void btnGo_Click(object sender, RoutedEventArgs e)
         {
             FileUtils.SaveSetting(entSprint);
+            entSearch.Text = "";
             Refresh(LoadEnum.LiveAlways);
         }
 
@@ -539,6 +569,68 @@ namespace Jiragile
             else if (tglSortByAssignee.IsChecked == true)
                 sort = SortEnum.Assignee;
             return sort;
+        }
+
+        private void btnPreviousSprint_Click(object sender, RoutedEventArgs e)
+        {
+            var sprint = new SprintClass(entSprint.Text);
+            sprint.Sprint--;
+            if (sprint.Sprint < 1)
+            {
+                sprint.Sprint = 6;
+                sprint.Release--;
+            }
+            if (sprint.Release < 1)
+            {
+                sprint.Release = 4;
+                sprint.Year--;
+            }
+            entSprint.Text = sprint.ToString();
+        }
+
+        private void btnNextSprint_Click(object sender, RoutedEventArgs e)
+        {
+            var sprint = new SprintClass(entSprint.Text);
+            sprint.Sprint++;
+            if(sprint.Sprint > 6)
+            {
+                sprint.Sprint = 1;
+                sprint.Release++;
+            }
+            if (sprint.Release > 4)
+            {
+                sprint.Release = 1;
+                sprint.Year++;
+            }
+            entSprint.Text = sprint.ToString();
+        }
+        
+    }
+    public class SprintClass
+    {
+        public SprintClass(string text)
+        {
+            var parts = text.Split(" .".ToCharArray());
+            var sprint = 0;
+            int.TryParse(parts[3][1].ToString(), out sprint);
+            var release = 0;
+            int.TryParse(parts[2][1].ToString(), out release);
+            var year = 0;
+            int.TryParse(parts[1], out year);
+            Project = parts[0];
+            Sprint = sprint;
+            Release = release;
+            Year = year;
+            Team = parts[4];
+        }
+        public string Project { get; set; }
+        public int Year { get; set; }
+        public int Release { get; set; }
+        public int Sprint { get; set; }
+        public string Team { get; set; }
+        public override string ToString()
+        {
+            return Project + " " + Year + ".R" + Release + ".S" + Sprint + "." + Team;
         }
     }
 }
