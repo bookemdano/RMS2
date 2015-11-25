@@ -10,10 +10,12 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
+using Windows.UI.Popups;
 using Windows.UI.Text;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Controls;
 using Windows.UI.Xaml.Controls.Primitives;
+using Windows.UI.Xaml.Navigation;
 
 // The Blank Page item template is documented at http://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -27,62 +29,122 @@ namespace Jiragile
         public MainPage()
         {
             this.InitializeComponent();
-            _toolTgls = new List<ToggleButton>() { tglSprint, tglSearch, tglSort, tglFilter };
-            _sortTgls = new List<ToggleButton>() { tglSortByStatus, tglSortByVersion, tglSortByAssignee};
-            FileUtils.GetSetting(tglShowOnHold);
-            FileUtils.GetSetting(tglShowOther);
-            FileUtils.GetSetting(tglShowResolved);
-            FileUtils.GetSetting(tglShowTesting);
-
-            FileUtils.GetSetting(tglSortByStatus);
-            FileUtils.GetSetting(tglSortByVersion);
-            FileUtils.GetSetting(tglSortByAssignee);
-
-            FileUtils.GetSetting(tglSprint);
-            FileUtils.GetSetting(tglFilter);
-            FileUtils.GetSetting(tglSort);
-            FileUtils.GetSetting(tglSearch);
-            foreach (var tgl in _toolTgls)
+        }
+        protected override void OnNavigatedTo(NavigationEventArgs e)
+        {
+            try
             {
-                if (tgl.IsChecked == true)
+                _toolTgls = new List<ToggleButton>() { tglSprint, tglSearch, tglSort, tglFilter };
+                _sortTgls = new List<ToggleButton>() { tglSortByStatus, tglSortByVersion, tglSortByAssignee };
+                FileUtils.GetSetting(tglShowOnHold);
+                FileUtils.GetSetting(tglShowOther);
+                FileUtils.GetSetting(tglShowResolved);
+                FileUtils.GetSetting(tglShowTesting);
+                FileUtils.GetSetting(tglShowSubtasks);
+
+                FileUtils.GetSetting(tglSortByStatus);
+                FileUtils.GetSetting(tglSortByVersion);
+                FileUtils.GetSetting(tglSortByAssignee);
+
+                FileUtils.GetSetting(tglSprint);
+                FileUtils.GetSetting(tglFilter);
+                FileUtils.GetSetting(tglSort);
+                FileUtils.GetSetting(tglSearch);
+                foreach (var tgl in _toolTgls)
                 {
-                    SelectTool(tgl);
-                    break;
+                    if (tgl.IsChecked == true)
+                    {
+                        SelectTool(tgl);
+                        break;
+                    }
                 }
+                FileUtils.GetSetting(tglChart);
+                FileUtils.GetSetting(tglDetail);
+
+                FileUtils.GetSetting(entSprint, "AP 2015.R4.S5.Mobile");
+
+                var timer = new DispatcherTimer();
+                timer.Interval = TimeSpan.FromSeconds(3);
+                timer.Tick += Timer_Tick;
+                timer.Start();
             }
-            FileUtils.GetSetting(tglChart);
-            FileUtils.GetSetting(tglDetail);
-
-            FileUtils.GetSetting(entSprint, "AP 2015.R4.S5.Mobile");
-
-            var timer = new DispatcherTimer();
-            timer.Interval = TimeSpan.FromSeconds(3);
-            timer.Tick += Timer_Tick;
-            timer.Start();
+            catch (Exception exc)
+            {
+                staStatus.Text = exc.Message;
+            }
+            base.OnNavigatedTo(e);
         }
 
         private async void Timer_Tick(object sender, object e)
         {
             var timer = sender as DispatcherTimer;
-            Refresh(LoadEnum.LiveOnlyIfOld);
+            await Refresh(LoadEnum.LiveOnlyIfOld);
             if (timer.Interval > TimeSpan.FromMinutes(1))
                 await JiraFileAccess.CleanUp();
             timer.Interval = TimeSpan.FromHours(1);
         }
 
-        private void Page_Loaded(object sender, RoutedEventArgs e)
+        private async void Page_Loaded(object sender, RoutedEventArgs e)
         {
-            Refresh(LoadEnum.Latest);
+            await Refresh(LoadEnum.Latest);
         }
 
         JiraSet _jiraSet;
         JiraSet _oldJiraSet;
-        async void Refresh(LoadEnum loadEnum)
+        async Task Refresh(LoadEnum loadEnum)
         {
-            if (loadEnum != LoadEnum.Latest || _jiraSet == null)
+            try
             {
-                staStatus.Text = "Refreshing";
+                if (loadEnum != LoadEnum.Latest || _jiraSet == null)
+                {
+                    staStatus.Text = "Refreshing";
+                    if (false == await GetJiraSet(loadEnum))
+                        return;
+                }
+                UpdateCounts(_jiraSet);
+                var issues = CreateIssueVms(_jiraSet, entSearch.Text, ShowSubtasks, ShowStatus);
+                lstIssues.Items.Clear();
+                IOrderedEnumerable<JiraIssueViewModel> ordered;
+                var sort = GetSortOrder();
+                if (sort == SortEnum.Status)
+                    ordered = issues.OrderBy(i => i.CalcedStatus);
+                else if (sort == SortEnum.Version)
+                    ordered = issues.OrderBy(i => i.FixVersionsString);
+                else
+                    ordered = issues.OrderBy(i => i.Assignee);
 
+                var totalStoryPoints = 0;
+                foreach (var issue in ordered)
+                {
+                    totalStoryPoints += issue.StoryPoints;
+                    lstIssues.Items.Add(new IssueControl(issue));
+                }
+                staStatus.Text = "Updated " + _jiraSet.RetrieveTime.RelativeTime();
+                staCounts.Text = ordered.Count() + " stories " + totalStoryPoints + " story points";
+                if (tglChart.IsChecked == true)
+                {
+                    canvas.Visibility = UIUtils.IsVisible(true);
+                    rowChart.Height = new GridLength(.5, GridUnitType.Star);
+                    var stats = await SprintStats.ReadStats(_jiraSet);
+                    var grapher = new SprintGrapher(canvas, stats, false, true);
+                }
+                else
+                {
+                    canvas.Visibility = UIUtils.IsVisible(false);
+                    rowChart.Height = new GridLength(0);
+                }
+            }
+            catch (Exception exc)
+            {
+                staStatus.Text = exc.Message;
+            }
+
+        }
+
+        private async Task<bool> GetJiraSet(LoadEnum loadEnum)
+        {
+            try
+            {
                 var dt = DateTimeOffset.MinValue;
                 var sprintKey = new SprintKey(entSprint.Text);
                 var str = "";
@@ -93,19 +155,26 @@ namespace Jiragile
                         if (_jiraSet != null && _jiraSet.RetrieveTime.Age().TotalMinutes < 5)
                         {
                             staStatus.Text = "Not Updated " + _jiraSet.RetrieveTime.RelativeTime();
-                            return;
+                            return false;
                         }
                     }
                     str = await JiraHttpAccess.GetSprintLiveAsync(sprintKey.Project, sprintKey.Sprint, true);
                     if (str.StartsWith("ERROR"))
                     {
                         staStatus.Text = str;
-                        return;
+                        return false;
                     }
                     dt = DateTimeOffset.Now;
-                    var tplOld = await JiraFileAccess.Read(sprintKey, LoadEnum.Yesterday);
-                    if (tplOld != null)
-                        _oldJiraSet = JiraSet.Parse(tplOld.Item1);
+                    try
+                    {
+                        var tplOld = await JiraFileAccess.Read(sprintKey, LoadEnum.Yesterday);
+                        if (tplOld != null)
+                            _oldJiraSet = JiraSet.Parse(tplOld.Item1);
+                    }
+                    catch (Exception)
+                    {
+                        _oldJiraSet = null;
+                    }
                 }
                 else
                 {
@@ -117,44 +186,18 @@ namespace Jiragile
                     }
                 }
                 if (string.IsNullOrWhiteSpace(str))
-                    return;
+                    return false;
                 _jiraSet = JiraSet.Parse(str);
                 _jiraSet.RetrieveTime = dt;
                 _jiraSet.SetSprintName(sprintKey);
                 if (_oldJiraSet != null)
                     _jiraSet.UpdateOldStatus(_oldJiraSet);
+                return true;
             }
-            UpdateCounts(_jiraSet);
-            var issues = CreateIssueVms(_jiraSet, entSearch.Text, false, ShowStatus);
-            lstIssues.Items.Clear();
-            IOrderedEnumerable<JiraIssueViewModel> ordered;
-            var sort = GetSortOrder();
-            if (sort == SortEnum.Status)
-                ordered = issues.OrderBy(i => i.CalcedStatus);
-            else if (sort == SortEnum.Version)
-                ordered = issues.OrderBy(i => i.FixVersionsString);
-            else
-                ordered = issues.OrderBy(i => i.Assignee);
-
-            var totalStoryPoints = 0;
-            foreach (var issue in ordered)
+            catch (Exception exc)
             {
-                totalStoryPoints += issue.StoryPoints;
-                lstIssues.Items.Add(new IssueControl(issue));
-            }
-            staStatus.Text = "Updated " + _jiraSet.RetrieveTime.RelativeTime();
-            staCounts.Text = ordered.Count() + " stories " + totalStoryPoints + " story points";
-            if (tglChart.IsChecked == true)
-            {
-                canvas.Visibility = UIUtils.IsVisible(true);
-                rowChart.Height = new GridLength(.5, GridUnitType.Star);
-                var stats = await SprintStats.ReadStats(_jiraSet);
-                var grapher = new SprintGrapher(canvas, stats, false, true);
-            }
-            else
-            {
-                canvas.Visibility = UIUtils.IsVisible(false);
-                rowChart.Height = new GridLength(0);
+                staStatus.Text = exc.Message;
+                return false;
             }
         }
 
@@ -181,11 +224,11 @@ namespace Jiragile
             tglShowOther.Content = "Other-" + other;
         }
 
-        private void btnGo_Click(object sender, RoutedEventArgs e)
+        private async void btnGo_Click(object sender, RoutedEventArgs e)
         {
             FileUtils.SaveSetting(entSprint);
             entSearch.Text = "";
-            Refresh(LoadEnum.LiveAlways);
+            await Refresh(LoadEnum.LiveAlways);
         }
 
         private static ObservableCollection<JiraIssueViewModel> CreateIssueVms(JiraSet jiraSet, string filter, bool showSubtasks, ShowStatusEnum showStatus)
@@ -263,9 +306,9 @@ namespace Jiragile
             return rv;
         }
 
-        private void Page_SizeChanged(object sender, SizeChangedEventArgs e)
+        private async void Page_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            Refresh(LoadEnum.Latest);
+            await Refresh(LoadEnum.Latest);
         }
         private enum ToolEnum
         {
@@ -320,10 +363,10 @@ namespace Jiragile
             pnlSearch.Visibility = UIUtils.IsVisible(tools == ToolEnum.Search);
         }
 
-        private void tglChart_Click(object sender, RoutedEventArgs e)
+        private async void tglChart_Click(object sender, RoutedEventArgs e)
         {
             FileUtils.SaveSetting(sender as AppBarToggleButton);
-            Refresh(LoadEnum.Latest);
+            await Refresh(LoadEnum.Latest);
         }
 
         private void btnSearchOld_Click(object sender, RoutedEventArgs e)
@@ -347,7 +390,7 @@ namespace Jiragile
                 if (issues == null)
                     return;
                 AddIssues(issues);
-                Refresh(LoadEnum.Latest);
+                await Refresh(LoadEnum.Latest);
                 staStatus.Text = "Searched for " + entSearch.Text;
             }
             catch (Exception exc)
@@ -395,9 +438,9 @@ namespace Jiragile
             entSearch.Text = "";
         }
 
-        private void entSearch_TextChanged(object sender, TextChangedEventArgs e)
+        private async void entSearch_TextChanged(object sender, TextChangedEventArgs e)
         {
-            Refresh(LoadEnum.Latest);
+            await Refresh(LoadEnum.Latest);
         }
 
         JiraIssueViewModel SelectedIssue
@@ -418,7 +461,15 @@ namespace Jiragile
             }
         }
 
-        private async void tglCopyFromOmni_Click(object sender, RoutedEventArgs e)
+        public bool ShowSubtasks
+        {
+            get
+            {
+                return tglShowSubtasks.IsChecked == true;
+            }
+        }
+
+        private async void btnCopyFromOmni_Click(object sender, RoutedEventArgs e)
         {
             var issue = SelectedIssue;
             if (issue == null)
@@ -427,16 +478,16 @@ namespace Jiragile
             var issues = new List<JiraIssueViewModel>() { issue };
             foreach (var omniIssue in issues.Where(i => !i.IsSubtask))
             {
-                var str = await HttpAccess.HttpPostAsync(JiraAccess.IssueUri(JiraSourceEnum.SDLC), JiraAccess.GetNewTaskBody(Project, omniIssue));
+                var str = await HttpAccess.HttpPostAsync(JiraAccess.IssueUri(JiraSourceEnum.SDLC), JiraAccess.GetBodyCopiedBug(Project, omniIssue));
                 await JiraFileAccess.WriteResults("new.json", str);
                 var json = JObject.Parse(str);
                 var self = (string)json["self"];
-                await HttpAccess.HttpPostAsync(self + @"/remotelink", JiraAccess.GetNewLinkBody(omniIssue));
+                await HttpAccess.HttpPostAsync(self + @"/remotelink", JiraAccess.GetBodyNewLink(omniIssue));
                 newIssues.AddRange(await FindIssues(JiraSourceEnum.SDLC, (string)json["key"]));
             }
             AddIssues(newIssues);
 
-            Refresh(LoadEnum.Latest);
+            await Refresh(LoadEnum.Latest);
         }
 
         private void lstIssues_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -490,7 +541,7 @@ namespace Jiragile
             sta.TextWrapping = TextWrapping.Wrap;
             pnlDetails.Children.Add(sta);
         }
-        private void tglCopy_Click(object sender, RoutedEventArgs e)
+        private void btnCopy_Click(object sender, RoutedEventArgs e)
         {
             var item = SelectedIssue;
             CopyToClipboard(item, true);
@@ -533,20 +584,20 @@ namespace Jiragile
             return rv;
         }
 
-        private async void tglMail_Click(object sender, RoutedEventArgs e)
+        private async void btnMail_Click(object sender, RoutedEventArgs e)
         {
             var issue = SelectedIssue;
             CopyToClipboard(issue, true);
             await Launcher.LaunchUriAsync(new Uri(issue.MailToLink()));
         }
-        private void tglShow_Click(object sender, RoutedEventArgs e)
+        private async void tglShow_Click(object sender, RoutedEventArgs e)
         {
             var tgl = (sender as ToggleButton);
             FileUtils.SaveSetting(tgl);
             if (tgl == tglDetail)
                 ShowSelectedDetails();
             else
-                Refresh(LoadEnum.Latest);
+                await Refresh(LoadEnum.Latest);
         }
 
         private void btnOpen_Click(object sender, RoutedEventArgs e)
@@ -554,10 +605,10 @@ namespace Jiragile
             SelectedIssue?.BrowseTo();
         }
 
-        private void tglSort_Click(object sender, RoutedEventArgs e)
+        private async void tglSort_Click(object sender, RoutedEventArgs e)
         {
             ExclusiveCheck(_sortTgls, sender as ToggleButton);
-            Refresh(LoadEnum.Latest);
+            await Refresh(LoadEnum.Latest);
         }
         private SortEnum GetSortOrder()
         {
@@ -571,7 +622,7 @@ namespace Jiragile
             return sort;
         }
 
-        private void btnPreviousSprint_Click(object sender, RoutedEventArgs e)
+        private async void btnPreviousSprint_Click(object sender, RoutedEventArgs e)
         {
             var sprint = new SprintClass(entSprint.Text);
             sprint.Sprint--;
@@ -586,9 +637,12 @@ namespace Jiragile
                 sprint.Year--;
             }
             entSprint.Text = sprint.ToString();
+            FileUtils.SaveSetting(entSprint);
+            entSearch.Text = "";
+            await Refresh(LoadEnum.LiveAlways);
         }
 
-        private void btnNextSprint_Click(object sender, RoutedEventArgs e)
+        private async void btnNextSprint_Click(object sender, RoutedEventArgs e)
         {
             var sprint = new SprintClass(entSprint.Text);
             sprint.Sprint++;
@@ -603,8 +657,62 @@ namespace Jiragile
                 sprint.Year++;
             }
             entSprint.Text = sprint.ToString();
+            FileUtils.SaveSetting(entSprint);
+            entSearch.Text = "";
+            await Refresh(LoadEnum.LiveAlways);
         }
-        
+
+        private async void btnSplit_Click(object sender, RoutedEventArgs e)
+        {
+            var issue = SelectedIssue;
+            if (issue == null)
+                return;
+
+            var newIssues = new List<JiraIssue>();
+            var parts = new List<string>() { "IMX", "AMX", "WMX", "Server" };
+            foreach(var part in parts)
+            {
+                var dlg = new MessageDialog("Create part for " + part + "?");
+                dlg.Commands.Add(new UICommand { Label = "Ok", Id = 0 });
+                dlg.Commands.Add(new UICommand { Label = "Cancel", Id = 1 });
+                var cmd = await dlg.ShowAsync();
+                if (cmd.Label != "Ok")
+                    continue;
+                var body = JiraAccess.GetBodySplitStory(issue, part);
+                var str = await HttpAccess.HttpPostAsync(JiraAccess.IssueUri(JiraSourceEnum.SDLC), body);
+
+                await JiraFileAccess.WriteResults("new.json", str);
+                var json = JObject.Parse(str);
+                var self = (string)json["self"];
+                await HttpAccess.HttpPostAsync(self + @"/remotelink", JiraAccess.GetBodyNewLink(issue));
+                newIssues.AddRange(await FindIssues(JiraSourceEnum.SDLC, (string)json["key"]));
+            }
+
+            AddIssues(newIssues);
+
+            await Refresh(LoadEnum.Latest);
+
+        }
+
+        private async void btnSetTeam_Click(object sender, RoutedEventArgs e)
+        {
+            var issues = _jiraSet.Issues;
+            foreach(var issue in issues)
+            {
+                try
+                {
+                    if (issue.Team != JiraAccess.Team)
+                        await HttpAccess.HttpPutAsync(
+                            JiraAccess.IssueUri(issue.Source, issue.Key),
+                            JiraAccess.GetBodyTeam(JiraAccess.Team));
+                }
+                catch (Exception exc)
+                {
+                    FileUtils.ErrorLog("Problem setting team on " + issue, exc);
+                }
+            }
+            await Refresh(LoadEnum.Latest);
+        }
     }
     public class SprintClass
     {

@@ -68,11 +68,11 @@ namespace JiraOne
             if (onlyOne)
             {
                 int i = 0;
-                FillTo(ptSets.Total, ColorPart(i++), null);
-                FillTo(ptSets.InProgress, ColorPart(i++), ColorPart(i, 1));
-                FillTo(ptSets.OnHold, ColorPart(i++), null);
-                FillTo(ptSets.Testing, ColorPart(i++), null);
-                FillTo(ptSets.Resolved, ColorPart(i), ColorPart(i, 1));
+                FillTo("Total", ptSets.Total, ColorPart(i++), null);
+                FillTo("InProgress", ptSets.InProgress, ColorPart(i++), ColorPart(i, 1));
+                FillTo("OnHold", ptSets.OnHold, ColorPart(i++), null);
+                FillTo("Testing", ptSets.Testing, ColorPart(i++), null);
+                FillTo("Resolved", ptSets.Resolved, ColorPart(i), ColorPart(i, 1));
             }
             else
             {
@@ -115,13 +115,15 @@ namespace JiraOne
             return rv;
         }
 
-        private void FillTo(List<Point> pts, Color color, Color? pointColor)
+        private void FillTo(string name, List<Point> pts, Color color, Color? pointColor)
         {
             var polyPts = new List<Point>();
             polyPts.Add(new Point(0, 0));
             polyPts.AddRange(pts);
             polyPts.Add(new Point(pts.Last().X, 0));
             FillPolygon(polyPts, color);
+            if (!string.IsNullOrWhiteSpace(name))
+                AddText(pts.Last(), name, Colors.Black);
 
             if (pointColor != null)
                 foreach (var pt in pts)

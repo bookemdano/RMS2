@@ -372,9 +372,9 @@ namespace JiraShare
                     if (double.TryParse(str, out d))
                         rv.StoryPoints = (int) d;
                 }
-                if (fields[TeamField] != null && fields[TeamField].HasValues)
+                if (fields[CloudTeamField] != null && fields[CloudTeamField].HasValues)
                 {
-                    var teamField = fields[TeamField];
+                    var teamField = fields[CloudTeamField];
                     rv.Team = (string)teamField["value"];
                 }
                 else if (fields[OmniTeamField] != null)
@@ -384,9 +384,9 @@ namespace JiraShare
                 rv.EpicLink = GetString(fields, EpicLinkField);
                 rv.EpicStatus = GetString(fields, EpicStatusField);
                 rv.CaseFiles = GetString(fields, CaseFilesField);
-                if (fields[SprintField] != null)
+                if (fields[DefaultSprintField] != null)
                 {
-                    foreach (var sprintPart in fields[SprintField])
+                    foreach (var sprintPart in fields[DefaultSprintField])
                     {
                         try
                         {
@@ -605,6 +605,14 @@ namespace JiraShare
         }
         public JiraIssue ParentIssue { get; internal set; }
         public JiraSourceEnum Source { get; private set; } = JiraSourceEnum.SDLC;
+        public JToken Project
+        {
+            get
+            {
+                return Key.Split("-".ToCharArray())[0];
+            }
+        }
+
         public static string ConvertToUrl(string text)
         {
             //text = text.Replace("%20", " ");
@@ -691,11 +699,14 @@ namespace JiraShare
         public static string StoryPointField = "customfield_10004";
         public static string EpicLinkField = "customfield_10008";
         public static string EpicStatusField = "customfield_10010";
-        public static string SprintField = "customfield_10007";
+        public static string CloudSprintField = "customfield_10007";
+        public static string OmniSprintField = "customfield_10126";
+        public static string DefaultSprintField = OmniSprintField;
         public static string CaseFilesField = "customfield_10002";
-        public static string TeamField = "customfield_11200";
+        public static string CloudTeamField = "customfield_11200";
         public static string OmniTeamField = "customfield_10421";   // new Jira Team Filed
-        
+        public static string DefaultTeamField = OmniTeamField;   
+
 
 
         #endregion

@@ -67,6 +67,7 @@ namespace Kanga
             try
             {
                 var epics = new List<JiraIssue>();
+                if (true)
                 {
                     var epicText = JiraHttpAccess.GetEpicsLive(source, project, false, true);
                     var epicJson = JObject.Parse(epicText);
@@ -592,9 +593,9 @@ namespace Kanga
             if (source == JiraSourceEnum.SDLC)
             {
                 if (project == ProjectEnum.RTS)
-                    strProject = "(project=MOB OR project=RP OR project=ATT)";
+                    strProject = "(project=RP OR project=AP)";
                 else
-                    strProject = "(project=MOB OR project=Apex OR project=Insight)";
+                    strProject = "(project=Apex OR project=Insight)";
             }
             else
             {
@@ -605,7 +606,7 @@ namespace Kanga
         internal static string GetEpicsUri(JiraSourceEnum source, ProjectEnum project)
         {
             //str = HttpGet(_latestApi + @"/search?jql=project=MOB AND Sprint='Sprint 16' and issuetype not in (subTaskIssueTypes())&maxResults=200&fields=parent,summary,subtasks,assignee," + JiraIssue.IssueTypeField);
-            var jql = GetProject(source, project);
+             var jql = GetProject(source, project);
             //jql += " AND (issuetype='EPIC' OR 'Epic Link' IS NOT EMPTY)"; // can't use JiraIssue.EpicLinkField in query
             jql += " AND issuetype='EPIC'";
             //jql += " AND 'Epic Status'=Done";

@@ -33,7 +33,7 @@
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <TextBox Name="entSprint" Text="AP 2015.R4.S5.Mobile" />
+            <TextBox Name="entSprint" Text="RA 2015.R4.S5.Mobile" />
             <Button Click="btnPreviousSprint_Click" Grid.Column="1">Prev</Button>
             <Button Click="btnNextSprint_Click" Grid.Column="2">Next</Button>
             <Button Click="btnGo_Click" Grid.Column="3">Go</Button>
@@ -55,6 +55,8 @@
             <ToggleButton Name="tglShowOnHold" IsChecked="True" Click="tglShow_Click">OnHold</ToggleButton>
             <ToggleButton Name="tglShowTesting" IsChecked="True" Click="tglShow_Click">Testing</ToggleButton>
             <ToggleButton Name="tglShowResolved" IsChecked="True" Click="tglShow_Click">Resolved</ToggleButton>
+            <AppBarSeparator/>
+            <ToggleButton Name="tglShowSubtasks" IsChecked="false" Click="tglShow_Click">Subtasks</ToggleButton>
         </StackPanel>
         <StackPanel Name="pnlSort" Orientation="Horizontal" Grid.Row="1" Visibility="Collapsed">
             <ToggleButton Name="tglSortByStatus" IsChecked="True" Click="tglSort_Click">Status</ToggleButton>
@@ -73,10 +75,14 @@
         </Grid>
         <Canvas Name="canvas" Grid.Row="3"/>
         <CommandBar Name="cmdActions" Grid.Row="4" Visibility="Collapsed">
-            <AppBarButton Click="btnOpen_Click" Icon="OpenLocal" Label="Open"/>
-            <AppBarButton Click="tglCopy_Click" Icon="Copy" Label="Copy"/>
-            <AppBarButton Click="tglCopyFromOmni_Click" Icon="MoveToFolder" Label="Clone From Omni"/>
-            <AppBarButton Click="tglMail_Click" Icon="Mail" Label="Mail"/>
+            <AppBarButton Click="btnOpen_Click" Icon="OpenPane" Label="Open"/>
+            <AppBarButton Click="btnCopy_Click" Icon="Copy" Label="Copy"/>
+            <AppBarButton Click="btnMail_Click" Icon="Mail" Label="Mail"/>
+            <CommandBar.SecondaryCommands>
+                <AppBarButton Click="btnSplit_Click" Icon="Repair" Label="Split by Platform"/>
+                <AppBarButton Click="btnCopyFromOmni_Click" Icon="MoveToFolder" Label="Clone From Omni"/>
+                <AppBarButton Click="btnSetTeam_Click" Icon="AddFriend" Label="Set Team"/>
+            </CommandBar.SecondaryCommands>
         </CommandBar>
         <StackPanel Orientation="Horizontal" Grid.Row="4" >
             <TextBlock Name="staCounts"/>

@@ -14,12 +14,14 @@ namespace JiraShare
     public enum JiraSourceEnum
     {
         SDLC,
-        Omnitracs
+        Omnitracs,
+        Default = Omnitracs
     }
 
     // TODONE 8/2014 Way faster
     static public class JiraAccess
     {
+        public static readonly string Team = "Mobile";
         static bool _getAllFields = false;  // gets all fields but takes forever
         static public string SourceUrl(JiraSourceEnum source)
         {
@@ -87,7 +89,7 @@ namespace JiraShare
             }
             var request = @"/search?jql=" + jql + "&maxResults=200";
             request += FieldsToGet();
-            return LatestApi(JiraSourceEnum.SDLC) + request;
+            return LatestApi(JiraSourceEnum.Default) + request;
         }
         internal static string GetEpicsUri(string project)
         {
@@ -99,7 +101,7 @@ namespace JiraShare
 
             var request = @"/search?jql=" + jql + "&maxResults=1000";
             request += FieldsToGet();
-            return LatestApi(JiraSourceEnum.SDLC) + request;
+            return LatestApi(JiraSourceEnum.Default) + request;
         }
 
         internal static string GetIssuesForEpicUri(string epicKey)
@@ -107,7 +109,7 @@ namespace JiraShare
             var jql = " 'Epic Link'= " + epicKey; // can't use JiraIssue.EpicLinkField in query
             var request = @"/search?jql=" + jql + "&maxResults=1000";
             request += FieldsToGet();
-            return LatestApi(JiraSourceEnum.SDLC) + request;
+            return LatestApi(JiraSourceEnum.Default) + request;
         }
 
         static string FieldsToGet()
@@ -115,7 +117,13 @@ namespace JiraShare
             if (_getAllFields)
                 return null;
             // setting to false gets all fields but takes forever
-            var fields = new List<string>() { "parent", "summary", "assignee", "components", "versions", "fixVersions", "status", "timetracking", JiraIssue.StoryPointField, "issuetype", JiraIssue.SprintField, JiraIssue.EpicLinkField, JiraIssue.EpicStatusField, "labels", JiraIssue.CaseFilesField, JiraIssue.TeamField, JiraIssue.OmniTeamField };
+            var fields = 
+                new List<string>()
+                {
+                    "parent", "summary", "assignee", "components", "versions", "fixVersions", "status",
+                    "timetracking", JiraIssue.StoryPointField, "issuetype", JiraIssue.DefaultSprintField,
+                    JiraIssue.EpicLinkField, JiraIssue.EpicStatusField, "labels", JiraIssue.CaseFilesField,
+                    JiraIssue.CloudTeamField, JiraIssue.OmniTeamField };
             return "&fields=" + string.Join(",", fields);
         }
         internal static string IssueUri(JiraSourceEnum source, string key)
@@ -137,12 +145,12 @@ namespace JiraShare
             return rv;
         }
 
-        internal static string GetComponentBody(List<string> names)
+        internal static string GetBodyComponents(List<string> names)
         {
-            return GetArrayBody("components", names, true);
+            return GetBodyArray("components", names, true);
         }
         static string _none = "-"; // sync with EditDetails._none
-        private static string GetArrayBody(string tag, string name)
+        private static string GetBodyArray(string tag, string name)
         {
             if (name == _none)
                 name = null;
@@ -157,10 +165,10 @@ namespace JiraShare
             // "components":[{"self":"https://roadnetmobiledev.atlassian.net/rest/api/2/component/10000","id":"10000","name"
         }
 
-        private static string GetArrayBody(string tag, List<string> strs, bool named)
+        private static string GetBodyArray(string tag, List<string> strs, bool named)
         {
             if (strs == null)
-                return GetArrayBody(tag, _none);
+                return GetBodyArray(tag, _none);
 
             var components = new JArray();
             foreach (var name in strs)
@@ -178,17 +186,25 @@ namespace JiraShare
             // "components":[{"self":"https://roadnetmobiledev.atlassian.net/rest/api/2/component/10000","id":"10000","name"
         }
 
-        internal static string GetFixVersionBody(List<string> names)
+        internal static string GetBodyFixVersion(List<string> names)
         {
-            return GetArrayBody("fixVersions", names, true);
+            return GetBodyArray("fixVersions", names, true);
         }
 
-        internal static string GetLabelsBody(List<string> names)
+        internal static string GetBodyLabels(List<string> names)
         {
-            return GetArrayBody("labels", names, false);
+            return GetBodyArray("labels", names, false);
         }
 
-        internal static string GetAssignBody(string name)
+        internal static string GetBodyTeam(string team)
+        {
+            var jobj = MakeJobj(JiraIssue.DefaultTeamField, team);
+
+            // "{\"fields\": {\"assignee\":{\"name\":\"\"}}}";
+            return jobj.ToString();
+        }
+
+        internal static string GetBodyAssign(string name)
         {
             if (name == _none)
                 name = null;
@@ -200,7 +216,7 @@ namespace JiraShare
             return fields.ToString();
         }
 
-        internal static string GetNewSubtaskBody(string project, JiraIssue issue, string summary, string originalEstimate, string assignee)
+        internal static string GetBodyNewSubtask(string project, JiraIssue issue, string summary, string originalEstimate, string assignee)
         {
             dynamic subtask = new JObject();
             /*
@@ -224,7 +240,7 @@ namespace JiraShare
             return rv.ToString();
         }
 
-        internal static string GetNewTaskBody(string project, JiraIssue issue)
+        internal static string GetBodyCopiedBug(string project, JiraIssue issue)
         {
             dynamic newTask = new JObject();
             /*
@@ -237,14 +253,32 @@ namespace JiraShare
             newTask.description = "added by Jiranator";
             newTask.project = MakeJobj("key", project);
             newTask.issuetype = MakeJobj("name", "Bug");
-            newTask.customfield_11200 = MakeJobj("value", "Mobile");   //JiraIssue.TeamField
+            newTask.customfield_11200 = MakeJobj("value", Team);   //JiraIssue.TeamField
             //newTask.team
             var rv = MakeJobj("fields", newTask);
             return rv.ToString();
         }
 
+        internal static string GetBodySplitStory(JiraIssue issue, string part)
+        {
+            dynamic newTask = new JObject();
+            /*
+            subtask.summary = "armstrong";
+            subtask.description = "described";
+            subtask.project = MakeJobj("key", project);
+            subtask.issuetype = MakeJobj("name", "Bug");
+            */
+            newTask.summary = issue.Summary + "-" + part;
+            newTask.description = "added by Jiranator";
+            newTask.project = MakeJobj("key", issue.Project);
+            newTask.issuetype = MakeJobj("name", issue.IssueType);
+            newTask.customfield_11200 = MakeJobj("value", Team);   //JiraIssue.TeamField
+            //newTask.team
+            var rv = MakeJobj("fields", newTask);
+            return rv.ToString();
+        }
 
-        internal static string GetNewLinkBody(JiraIssue issue)
+        internal static string GetBodyNewLink(JiraIssue issue)
         {
             dynamic newTask = new JObject();
             /*
@@ -376,6 +410,8 @@ namespace JiraShare
                 return null;
             var dt = JiraFileAccess.DateTimeFromFileName(filename);
             var compressed = await FileUtils.ReadAllBytes(filename);
+            if (compressed == null || compressed.Length == 0)
+                return null;
             var str = UnZipStr(compressed);
             return new Tuple<string, DateTimeOffset>(str, dt);
         }
