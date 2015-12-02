@@ -79,13 +79,17 @@ namespace JiraShare
         internal static string GetSprintUri(string project, string sprint)
         {
             //str = HttpGet(_latestApi + @"/search?jql=project=MOB AND Sprint='Sprint 16' and issuetype not in (subTaskIssueTypes())&maxResults=200&fields=parent,summary,subtasks,assignee," + JiraIssue.IssueTypeField);
-            var jql = string.Format("project={0}", project);
-            if (!string.IsNullOrWhiteSpace(sprint))
+            string jql = "";
+            if (string.IsNullOrWhiteSpace(sprint))
+            {
+                jql = string.Format("project={0}", project);
+            }
+            else
             {
                 if (sprint.ToLower() == "backlog")
-                    jql += " AND Sprint=EMPTY AND Status!='Resolved' AND Status!='Closed'";
+                    jql = "Sprint=EMPTY AND Status!='Resolved' AND Status!='Closed'";
                 else
-                    jql += string.Format(" AND Sprint='{0}'", sprint);
+                    jql = string.Format("Sprint='{0}'", sprint);
             }
             var request = @"/search?jql=" + jql + "&maxResults=200";
             request += FieldsToGet();
