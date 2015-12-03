@@ -149,9 +149,6 @@ namespace JiraOne
             int bottom = 0;
             if (Downhill)
                 bottom = 1;
-            AddChartLabel(new Point(0, bottom), sprint.StartTime.RelativeDate(), Orientation.Horizontal, HorizontalAlignment.Right, VerticalAlignment.Center);
-            AddChartLabel(new Point(1, bottom), sprint.TargetTime.RelativeDate(), Orientation.Horizontal, HorizontalAlignment.Left, VerticalAlignment.Center);
-
             if (chartTasks)
             {
                 AddChartLabel(new Point(0, 0), sprint.MinTaskCount.ToString("N0"), Orientation.Vertical, HorizontalAlignment.Center, VerticalAlignment.Top);
@@ -176,12 +173,30 @@ namespace JiraOne
                 AddLine(new Point(0, d), new Point(1, d), Colors.Gray, 1);
 
             }
+            Rect lastRect = Rect.Empty;
+            var rect = GetLabelRect(new Point(0, bottom), sprint.StartTime.RelativeDate(), Orientation.Horizontal, HorizontalAlignment.Center, VerticalAlignment.Center);
+            lastRect = rect;
+            AddChartLabel(new Point(rect.X, rect.Y), sprint.StartTime.RelativeDate());
+
             for (var dt = sprint.StartTime.AddDays(1); dt < sprint.TargetTime; dt = dt.AddDays(1))
             {
-                var pct = (dt - sprint.StartTime).TotalDays / sprint.DayCount; 
-                AddChartLabel(new Point(pct, bottom), dt.RelativeDate(), Orientation.Horizontal, HorizontalAlignment.Center, VerticalAlignment.Center);
+                var pct = (dt - sprint.StartTime).TotalDays / sprint.DayCount;
                 AddLine(new Point(pct, 0), new Point(pct, 1), Colors.Gray, 1);
+
+                rect = GetLabelRect(new Point(pct, bottom), dt.RelativeDate(), Orientation.Horizontal, HorizontalAlignment.Center, VerticalAlignment.Center);
+                if (RectIntersect(rect, lastRect))
+                    continue;
+                lastRect = rect;
+                AddChartLabel(new Point(rect.X, rect.Y), dt.RelativeDate());
             }
+            rect = GetLabelRect(new Point(1, bottom), sprint.TargetTime.RelativeDate(), Orientation.Horizontal, HorizontalAlignment.Center, VerticalAlignment.Center);
+            if (!RectIntersect(rect, lastRect))
+                AddChartLabel(new Point(rect.X, rect.Y), sprint.TargetTime.RelativeDate());
+        }
+        bool RectIntersect(Rect rect1, Rect rect2)
+        {
+            rect1.Intersect(rect2);
+            return !rect1.IsEmpty;
         }
     }
 }
