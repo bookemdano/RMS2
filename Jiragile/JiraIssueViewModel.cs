@@ -134,16 +134,6 @@ namespace JiraOne
             }
         }
 
-        public Change LastChange
-        {
-            get
-            {
-                if (Changes == null || Changes.Count() == 0)
-                    return null;
-                return Changes.Last();
-            }
-        }
-
         #endregion
 
         public string Description(bool includeParent, bool includeSummary, bool includeMeta)

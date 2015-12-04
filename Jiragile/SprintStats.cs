@@ -21,6 +21,60 @@ namespace JiraShare
         static dynamic _oldStat;
         internal static async Task<SprintStats> ReadStats(JiraSet currentSprint)
         {
+            var key = currentSprint.Key;
+            var rv = new SprintStats(key);
+            var start = rv.StartTime;
+            var end = rv.TargetTime;
+            if (end > DateTimeOffset.Now)
+                end = DateTimeOffset.Now;
+
+            SprintStat lastStat = null;
+            for (var dt = start; dt <= end; dt = dt.AddHours(1))
+            {
+                var stat = new SprintStat();
+                stat.Timestamp = dt;
+                foreach (var issue in currentSprint.Issues)
+                {
+                    var changes = issue.Changes.Where(c => c.Timestamp < dt);
+                    UpdateStat(stat, issue, changes);
+                }
+                rv.Add(stat);
+            }
+            return rv;
+        }
+
+        private static void UpdateStat(SprintStat stat, JiraIssue issue, IEnumerable<Change> changes)
+        {
+            if (changes == null || changes.Count() == 0)
+                return;
+            var lastChange = changes.Last();
+            var status = JiraIssue.GetStatusEnum(lastChange.NewValue);
+            stat.StoryPointCounts.Total += issue.StoryPoints;
+            stat.TaskCounts.Total++;
+            if (JiraIssue.IsResolvedEnum(status))
+            {
+                stat.StoryPointCounts.Resolved += issue.StoryPoints;
+                stat.TaskCounts.Resolved++;
+            }
+            if (JiraIssue.IsTestingEnum(status))
+            {
+                stat.StoryPointCounts.Testing += issue.StoryPoints;
+                stat.TaskCounts.Testing++;
+            }
+            if (JiraIssue.IsOnHoldEnum(status))
+            {
+                stat.StoryPointCounts.OnHold += issue.StoryPoints;
+                stat.TaskCounts.OnHold++;
+            }
+            if (JiraIssue.IsInProgressEnum(status))
+            {
+                stat.StoryPointCounts.InProgress += issue.StoryPoints;
+                stat.TaskCounts.InProgress++;
+            }
+        }
+
+        internal static async Task<SprintStats> ReadStatsOld(JiraSet currentSprint)
+        {
             bool logSpeed = true;
             var sw = System.Diagnostics.Stopwatch.StartNew();
 
@@ -208,6 +262,10 @@ namespace JiraShare
         {
             Stats.Add(new SprintStat(jiraSet, special));
         }
+        internal void Add(SprintStat stat)
+        {
+            Stats.Add(stat);
+        }
 
         internal double DayPct(DateTimeOffset ts)
         {
@@ -226,6 +284,10 @@ namespace JiraShare
     }
     public class SprintStat
     {
+        public SprintStat()
+        {
+
+        }
         public SprintStat(JiraSet jiraSet, SpecialEnum special)
         {
             Timestamp = jiraSet.RetrieveTime;

@@ -67,8 +67,6 @@ namespace JiraShare
             Assignee = other.Assignee;
             Team = other.Team;
             Sprint = other.Sprint;
-            OldStatus = other.OldStatus;
-            OldCalcedStatus = other.OldCalcedStatus;
             Parent = other.Parent;
             ParentIssue = other.ParentIssue;
             StoryPoints = other.StoryPoints;
@@ -125,19 +123,6 @@ namespace JiraShare
             return false;
         }
 
-        internal JiraIssue UpdateFromOld(IEnumerable<JiraIssue> oldIssues)
-        {
-            var oldIssue = oldIssues.SingleOrDefault(i => i.Key == Key);
-            if (oldIssue != null)
-            {
-                OldStatus = oldIssue.Status;
-                OldCalcedStatus = oldIssue.CalcStatus();
-            }
-            else
-                return null;
-            return oldIssue;
-        }
-
         #endregion
 
         #region Members/Public Auto-Properties
@@ -157,13 +142,38 @@ namespace JiraShare
         public string Sprint { get; set; }
         public string CaseFiles { get; private set; }
 
-        public StatusEnum OldStatus { get; set; }
-        public StatusEnum OldCalcedStatus { get; set; }
-
         public string Parent { get; set; }
         public int StoryPoints { get; set; }
         public string Team { get; private set; }
 
+        public StatusEnum OldStatus
+        {
+            get
+            {
+                var last = LastChange;
+                if (last == null || string.IsNullOrWhiteSpace(last.OldValue))
+                    return StatusEnum.New;
+                return GetStatusEnum(last.OldValue);
+            }
+        }
+        public StatusEnum OldCalcedStatus
+        {
+            get
+            {
+                // TODO get real old calced status because I don't know old subtasks states
+                return OldStatus;
+            }
+        }
+
+        public Change LastChange
+        {
+            get
+            {
+                if (Changes == null || Changes.Count() == 0)
+                    return null;
+                return Changes.Last();
+            }
+        }
 
         public string ShortIssueType
         {
@@ -250,7 +260,7 @@ namespace JiraShare
             }
         }
 
-        static private bool IsResolvedEnum(StatusEnum statusEnum)
+        static internal bool IsResolvedEnum(StatusEnum statusEnum)
         {
             return statusEnum == StatusEnum.Resolved || statusEnum == StatusEnum.Closed;
         }
@@ -289,8 +299,12 @@ namespace JiraShare
         {
             get
             {
-                return CalcedStatus == StatusEnum.TestReady || CalcedStatus == StatusEnum.InTesting;
+                return IsTestingEnum(CalcedStatus);
             }
+        }
+        public static bool IsTestingEnum(StatusEnum status)
+        {
+            return status == StatusEnum.TestReady || status == StatusEnum.InTesting;
         }
         public bool IsDoc
         {
@@ -303,16 +317,26 @@ namespace JiraShare
         {
             get
             {
-                return CalcedStatus == StatusEnum.OnHold || CalcedStatus == StatusEnum.Blocked || CalcedStatus == StatusEnum.CodeReview;
+                return IsOnHoldEnum(CalcedStatus);
             }
+        }
+
+        public static bool IsOnHoldEnum(StatusEnum status)
+        {
+            return status == StatusEnum.OnHold || status == StatusEnum.Blocked || status == StatusEnum.CodeReview;
         }
 
         public bool IsInProgress
         {
             get
             {
-                return CalcedStatus == StatusEnum.InProgress || CalcedStatus == StatusEnum.Partial;
+                return IsInProgressEnum(CalcedStatus);
             }
+        }
+
+        public static bool IsInProgressEnum(StatusEnum status)
+        {
+            return status == StatusEnum.InProgress || status == StatusEnum.Partial;
         }
 
         public enum StatusEnum
@@ -836,28 +860,6 @@ namespace JiraShare
             }
             return rv;
         }
-        public void UpdateOldStatus(JiraSet old)
-        {
-            if (old.Issues.Count() > 0)
-            {
-                foreach (var issue in Issues)
-                {
-                    var oldIssue = issue.UpdateFromOld(old.Issues.Select(i => (JiraIssue) i));
-                    if (oldIssue != null)
-                    {
-                        foreach (var subTask in issue.SubTasks)
-                            subTask.UpdateFromOld(oldIssue.SubTasks);
-                    }
-                    else
-                    {
-                        issue.OldStatus = JiraIssue.StatusEnum.New;
-                        issue.OldCalcedStatus = JiraIssue.StatusEnum.New;
-                    }
-                }
-            }
-            OldRetrieveTime = old.RetrieveTime;
-            _oldSprintStatus = old._oldSprintStatus;
-        }
 
         internal void SetSprintName(string sprint)
         {
@@ -871,7 +873,6 @@ namespace JiraShare
         }
 
         public DateTimeOffset RetrieveTime { get; set; }
-        public DateTimeOffset OldRetrieveTime { get; set; }
 
         public string ErrorStatus { get; set; }
 
@@ -884,16 +885,7 @@ namespace JiraShare
                 return RetrieveTime.ToString(DateFormatString);
             }
         }
-        string _oldSprintStatus;
-        public string OldSprintStatus
-        {
-            get
-            {
-                if (_oldSprintStatus != null)
-                    return _oldSprintStatus;
-                return OldRetrieveTime.ToString(DateFormatString);
-            }
-        }
+
         public static string DateFormatString
         {
             get

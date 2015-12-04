@@ -90,7 +90,6 @@ namespace Jiragile
         }
 
         JiraSet _jiraSet;
-        JiraSet _oldJiraSet;
         async Task Refresh(LoadEnum loadEnum)
         {
             try
@@ -165,16 +164,6 @@ namespace Jiragile
                         return false;
                     }
                     dt = DateTimeOffset.Now;
-                    try
-                    {
-                        var tplOld = await JiraFileAccess.Read(sprintKey, LoadEnum.Yesterday);
-                        if (tplOld != null)
-                            _oldJiraSet = JiraSet.Parse(tplOld.Item1);
-                    }
-                    catch (Exception)
-                    {
-                        _oldJiraSet = null;
-                    }
                 }
                 else
                 {
@@ -190,8 +179,6 @@ namespace Jiragile
                 _jiraSet = JiraSet.Parse(str);
                 _jiraSet.RetrieveTime = dt;
                 _jiraSet.SetSprintName(sprintKey);
-                if (_oldJiraSet != null)
-                    _jiraSet.UpdateOldStatus(_oldJiraSet);
                 return true;
             }
             catch (Exception exc)
