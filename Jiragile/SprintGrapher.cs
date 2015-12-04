@@ -191,7 +191,7 @@ namespace JiraOne
             }
             rect = GetLabelRect(new Point(1, bottom), sprint.TargetTime.RelativeDate(), Orientation.Horizontal, HorizontalAlignment.Center, VerticalAlignment.Center);
             if (!RectIntersect(rect, lastRect))
-                AddChartLabel(new Point(rect.X, rect.Y), sprint.TargetTime.RelativeDate());
+                AddChartLabel(new Point(rect.X, rect.Y), sprint.StartTime.RelativeDate());
         }
         bool RectIntersect(Rect rect1, Rect rect2)
         {

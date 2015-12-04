@@ -102,6 +102,7 @@
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Change.cs" />
     <Compile Include="GraphBase.cs" />
     <Compile Include="Grapher.cs" />
     <Compile Include="HttpAccess.cs" />

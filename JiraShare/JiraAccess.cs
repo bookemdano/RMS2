@@ -72,7 +72,7 @@ namespace JiraShare
 
         internal static string FindIssueByKey(JiraSourceEnum source, string key)
         {
-            var fmt = LatestApi(source) + @"/search?jql=issue='{0}'&maxResults=200";
+            var fmt = LatestApi(source) + @"/search?jql=issue='{0}'&maxResults=200&expand=changelog";
             return string.Format(fmt, key);
         }
 
@@ -91,7 +91,7 @@ namespace JiraShare
                 else
                     jql = string.Format("Sprint='{0}'", sprint);
             }
-            var request = @"/search?jql=" + jql + "&maxResults=200";
+            var request = @"/search?jql=" + jql + "&maxResults=200&expand=changelog";
             request += FieldsToGet();
             return LatestApi(JiraSourceEnum.Default) + request;
         }
@@ -308,7 +308,7 @@ namespace JiraShare
     }
     static public class JiraFileAccess
     {
-        static bool _saveUncompressedCopy = false;
+        static bool _saveUncompressedCopy = true;
 
         internal static async Task<int> CleanUp()
         {

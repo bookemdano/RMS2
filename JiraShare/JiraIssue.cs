@@ -74,6 +74,8 @@ namespace JiraShare
             StoryPoints = other.StoryPoints;
             foreach (var name in other.Sprints)
                 Sprints.Add(name);
+            foreach (var change in other.Changes)
+                Changes.Add(change);
 
             {
                 var namedDoc = Summary.ToUpper() == "DOC";
@@ -449,6 +451,7 @@ namespace JiraShare
                         rv.SubTasks.Add(JiraIssue.Parse(issue));
                     }
                 }
+                rv.Changes = GetChangelog(json["changelog"]);
                 return rv;
             }
             catch (Exception exc)
@@ -457,6 +460,43 @@ namespace JiraShare
                 throw;
             }
         }
+
+        private static List<Change> GetChangelog(JToken changelog)
+        {
+            if (changelog == null)
+                return null;
+            try
+            {
+                var earliest = DateTimeOffset.MaxValue;
+                var histories = changelog["histories"];
+                var rv = new List<Change>();
+                foreach (var history in histories)
+                {
+                    var created = (DateTimeOffset)history["created"];
+                    if (created < earliest)
+                        earliest = created;
+                    var items = history["items"];
+                    foreach (var item in items)
+                    {
+                        var field = (string)item["field"];
+
+                        if (field == "status")
+                        {
+                            var oldStatus = (string)item["fromString"];
+                            var newStatus = (string)item["toString"];
+                            rv.Add(new Change(created, oldStatus, newStatus));
+                        }
+                    }
+                }
+                rv.Add(new Change(earliest, null, "Open"));
+                return rv.OrderBy(c => c.Timestamp).ToList();
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
         private static string GetString(JToken fields, string fieldName)
         {
             try
@@ -547,6 +587,7 @@ namespace JiraShare
         public List<string> FixVersions { get; private set; } = new List<string>();
         public List<string> AffectsVersions { get; private set; } = new List<string>();
         public List<string> Labels { get; private set; } = new List<string>();
+        public List<Change> Changes { get; private set; } = new List<Change>();
         // don't forget to add to copy cont
 
         public string ComponentsString

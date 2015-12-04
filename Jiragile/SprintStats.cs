@@ -37,7 +37,7 @@ namespace JiraShare
                 return _oldStat.Stats;
             if (logSpeed)
                 FileUtils.Log("ReadStats CheckOld", sw);
-
+            //Get age in status
             var dts = fileTimes?.Select(f => f.Value);
 
             var rv = new SprintStats(key);
