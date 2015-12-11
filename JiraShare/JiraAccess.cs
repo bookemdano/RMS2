@@ -308,7 +308,7 @@ namespace JiraShare
     }
     static public class JiraFileAccess
     {
-        static bool _saveUncompressedCopy = true;
+        static bool _saveUncompressedCopy = false;
 
         internal static async Task<int> CleanUp()
         {
@@ -395,11 +395,15 @@ namespace JiraShare
             return rv;
         }
 
-        internal static async void Write(string filenameStub, string str)
+        internal static async Task Write(string filenameStub, string str)
         {
             var name = GetFile(filenameStub, DateTimeOffset.Now);
+            if (str.Length == 0)
+                return;
             var compressed = ZipStr(str);
-            FileUtils.WriteAllBytes(name, compressed);
+            if (compressed.Length == 0)
+                return;
+            await FileUtils.WriteAllBytes(name, compressed);
             if (_saveUncompressedCopy)   // write an uncompressed copy
             {
                 name = System.IO.Path.ChangeExtension(name, ".json");

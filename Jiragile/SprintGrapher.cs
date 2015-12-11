@@ -69,10 +69,10 @@ namespace JiraOne
             {
                 int i = 0;
                 FillTo("Total", ptSets.Total, ColorPart(i++), null);
-                FillTo("InProgress", ptSets.InProgress, ColorPart(i++), ColorPart(i, 1));
+                FillTo("InProgress", ptSets.InProgress, ColorPart(i++), null);
                 FillTo("OnHold", ptSets.OnHold, ColorPart(i++), null);
                 FillTo("Testing", ptSets.Testing, ColorPart(i++), null);
-                FillTo("Resolved", ptSets.Resolved, ColorPart(i), ColorPart(i, 1));
+                FillTo("Resolved", ptSets.Resolved, ColorPart(i), null);
             }
             else
             {

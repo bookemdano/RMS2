@@ -58,6 +58,7 @@ namespace Jiragile
                         break;
                     }
                 }
+                FileUtils.GetSetting(tglList);
                 FileUtils.GetSetting(tglChart);
                 FileUtils.GetSetting(tglDetail);
 
@@ -120,10 +121,20 @@ namespace Jiragile
                 }
                 staStatus.Text = "Updated " + _jiraSet.RetrieveTime.RelativeTime();
                 staCounts.Text = ordered.Count() + " stories " + totalStoryPoints + " story points";
+                if (tglList.IsChecked == true)
+                {
+                    grdList.Visibility = UIUtils.IsVisible(true);
+                    rowList.Height = new GridLength(1, GridUnitType.Star);
+                }
+                else
+                {
+                    grdList.Visibility = UIUtils.IsVisible(false);
+                    rowList.Height = new GridLength(0);
+                }
                 if (tglChart.IsChecked == true)
                 {
                     canvas.Visibility = UIUtils.IsVisible(true);
-                    rowChart.Height = new GridLength(.5, GridUnitType.Star);
+                    rowChart.Height = new GridLength(1, GridUnitType.Star);
                     var stats = await SprintStats.ReadStats(_jiraSet);
                     var grapher = new SprintGrapher(canvas, stats, false, true);
                 }
@@ -465,7 +476,7 @@ namespace Jiragile
             var issues = new List<JiraIssueViewModel>() { issue };
             foreach (var omniIssue in issues.Where(i => !i.IsSubtask))
             {
-                var str = await HttpAccess.HttpPostAsync(JiraAccess.IssueUri(JiraSourceEnum.SDLC), JiraAccess.GetBodyCopiedBug(Project, omniIssue));
+                var str = await HttpAccess.HttpPostAsync(JiraAccess.IssueUri(JiraSourceEnum.Omnitracs), JiraAccess.GetBodyCopiedBug(Project, omniIssue));
                 await JiraFileAccess.WriteResults("new.json", str);
                 var json = JObject.Parse(str);
                 var self = (string)json["self"];

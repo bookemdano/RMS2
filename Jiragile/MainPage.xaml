@@ -11,8 +11,8 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height=".5*"/>
-            <RowDefinition x:Name="rowChart" Height=".5*"/>
+            <RowDefinition x:Name="rowList" Height="*"/>
+            <RowDefinition x:Name="rowChart" Height="*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
         <CommandBar>
@@ -23,6 +23,7 @@
             <AppBarToggleButton Name="tglSort" Click="tglTools_Click" Icon="Sort" Label="Sort"/>
             <AppBarToggleButton Name="tglSearch" Click="tglTools_Click" Icon="Find" Label="Search"/>
             <AppBarSeparator/>
+            <AppBarToggleButton Name="tglList" Click="tglShow_Click" Icon="AllApps" Label="List"/>
             <AppBarToggleButton Name="tglChart" Click="tglShow_Click" Icon="Map" Label="Chart"/>
             <AppBarToggleButton Name="tglDetail" Click="tglShow_Click" Icon="List" Label="Details"/>
         </CommandBar>
@@ -63,7 +64,7 @@
             <ToggleButton Name="tglSortByVersion" IsChecked="False" Click="tglSort_Click">Version</ToggleButton>
             <ToggleButton Name="tglSortByAssignee" IsChecked="False" Click="tglSort_Click">Assignee</ToggleButton>
         </StackPanel>
-        <Grid Grid.Row="2">
+        <Grid Name="grdList"  Grid.Row="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition x:Name="colDetail" Width="0"/>
