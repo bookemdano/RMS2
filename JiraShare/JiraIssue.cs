@@ -66,13 +66,14 @@ namespace JiraShare
             Status = other.Status;
             Assignee = other.Assignee;
             Team = other.Team;
+            Severity = other.Severity;
             Sprint = other.Sprint;
             Parent = other.Parent;
             ParentIssue = other.ParentIssue;
             StoryPoints = other.StoryPoints;
             foreach (var name in other.Sprints)
                 Sprints.Add(name);
-            foreach (var change in other.Changes)
+            foreach (var change in other.Changes.AllChanges)
                 Changes.Add(change);
 
             {
@@ -132,7 +133,7 @@ namespace JiraShare
         public string Summary { get; private set; }
         public string EpicLink { get; private set; }
         public string EpicStatus { get; private set; }
-        public DateTime? CreatedDate { get; private set; }
+        public DateTimeOffset CreatedDate { get; private set; }
         public int Progress { get; private set; }
         public List<JiraIssue> SubTasks { get; private set; }
         public string IssueType { get; private set; }
@@ -141,7 +142,7 @@ namespace JiraShare
         public string Assignee { get; set; }
         public string Sprint { get; set; }
         public string CaseFiles { get; private set; }
-
+        public string Severity{ get; private set; }
         public string Parent { get; set; }
         public int StoryPoints { get; set; }
         public string Team { get; private set; }
@@ -150,7 +151,7 @@ namespace JiraShare
         {
             get
             {
-                var last = LastChange;
+                var last = Changes.LastChange("status");
                 if (last == null || string.IsNullOrWhiteSpace(last.OldValue))
                     return StatusEnum.New;
                 return GetStatusEnum(last.OldValue);
@@ -162,16 +163,6 @@ namespace JiraShare
             {
                 // TODO get real old calced status because I don't know old subtasks states
                 return OldStatus;
-            }
-        }
-
-        public Change LastChange
-        {
-            get
-            {
-                if (Changes == null || Changes.Count() == 0)
-                    return null;
-                return Changes.Last();
             }
         }
 
@@ -369,6 +360,8 @@ namespace JiraShare
                     rv = StatusEnum.TestReady;
                 else if (status == "Test")
                     rv = StatusEnum.InTesting;
+                else if (status == "AssignedRelease")
+                    rv = StatusEnum.Open;
                 else
                     rv = StatusEnum.Unknown;
             }
@@ -410,6 +403,7 @@ namespace JiraShare
                 rv.EpicLink = GetString(fields, EpicLinkField);
                 rv.EpicStatus = GetString(fields, EpicStatusField);
                 rv.CaseFiles = GetString(fields, CaseFilesField);
+                rv.Severity = GetString(fields, SeverityField);
                 if (fields[DefaultSprintField] != null)
                 {
                     foreach (var sprintPart in fields[DefaultSprintField])
@@ -437,7 +431,9 @@ namespace JiraShare
                     rv.Source = JiraSourceEnum.SDLC;
                 rv.IsSubtask = (bool)issueType["subtask"];
                 if (fields["created"] != null)
-                    rv.CreatedDate = (DateTime)fields["created"];
+                    rv.CreatedDate = (DateTimeOffset)fields["created"];
+                else
+                    rv.CreatedDate = DateTimeOffset.MinValue;
                 //var tokens = fields.Children();
                 if (fields["status"] != null)
                 {
@@ -475,7 +471,7 @@ namespace JiraShare
                         rv.SubTasks.Add(JiraIssue.Parse(issue));
                     }
                 }
-                rv.Changes = GetChangelog(json["changelog"]);
+                rv.Changes = GetChangelog(json["changelog"], rv.CreatedDate);
                 return rv;
             }
             catch (Exception exc)
@@ -485,35 +481,32 @@ namespace JiraShare
             }
         }
 
-        private static List<Change> GetChangelog(JToken changelog)
+        private static ChangeSet GetChangelog(JToken changelog, DateTimeOffset issueCreated)
         {
             if (changelog == null)
                 return null;
             try
             {
-                var earliest = DateTimeOffset.MaxValue;
                 var histories = changelog["histories"];
                 var rv = new List<Change>();
                 foreach (var history in histories)
                 {
                     var created = (DateTimeOffset)history["created"];
-                    if (created < earliest)
-                        earliest = created;
                     var items = history["items"];
                     foreach (var item in items)
                     {
                         var field = (string)item["field"];
 
-                        if (field == "status")
+                        //if (field == "status")
                         {
                             var oldStatus = (string)item["fromString"];
                             var newStatus = (string)item["toString"];
-                            rv.Add(new Change(created, oldStatus, newStatus));
+                            rv.Add(new Change(field, created, oldStatus, newStatus));
                         }
                     }
                 }
-                rv.Add(new Change(earliest, null, "Open"));
-                return rv.OrderBy(c => c.Timestamp).ToList();
+                rv.Add(new Change("status", issueCreated, null, "Open"));
+                return new ChangeSet(rv);
             }
             catch (Exception)
             {
@@ -611,7 +604,7 @@ namespace JiraShare
         public List<string> FixVersions { get; private set; } = new List<string>();
         public List<string> AffectsVersions { get; private set; } = new List<string>();
         public List<string> Labels { get; private set; } = new List<string>();
-        public List<Change> Changes { get; private set; } = new List<Change>();
+        public ChangeSet Changes { get; private set; } = new ChangeSet();
         // don't forget to add to copy cont
 
         public string ComponentsString
@@ -708,8 +701,7 @@ namespace JiraShare
                 rv += " Summary:" + Summary;
             if (!string.IsNullOrWhiteSpace(IssueType))
                 rv += " IssueType:" + IssueType;
-            if (CreatedDate.HasValue)
-                rv += " CreatedDate:" + CreatedDate + " Progress:" + Progress;
+            rv += " CreatedDate:" + CreatedDate + " Progress:" + Progress;
             return rv;
         }
 
@@ -769,7 +761,8 @@ namespace JiraShare
         public static string DefaultSprintField = OmniSprintField;
         public static string CaseFilesField = "customfield_10002";
         public static string CloudTeamField = "customfield_11200";
-        public static string OmniTeamField = "customfield_10421";   // new Jira Team Filed
+        public static string OmniTeamField = "customfield_10421";
+        public static string SeverityField = "customfield_10119";   
         public static string DefaultTeamField = OmniTeamField;   
 
 

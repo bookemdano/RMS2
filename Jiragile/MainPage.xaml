@@ -26,6 +26,10 @@
             <AppBarToggleButton Name="tglList" Click="tglShow_Click" Icon="AllApps" Label="List"/>
             <AppBarToggleButton Name="tglChart" Click="tglShow_Click" Icon="Map" Label="Chart"/>
             <AppBarToggleButton Name="tglDetail" Click="tglShow_Click" Icon="List" Label="Details"/>
+            <CommandBar.SecondaryCommands>
+                <AppBarButton Click="btnBugs_Click" Icon="ZeroBars" Label="Bugs"/>
+                <AppBarButton Click="btnSetTeam_Click" Icon="AddFriend" Label="Set Team"/>
+            </CommandBar.SecondaryCommands>
         </CommandBar>
         <Grid Name="pnlSprint" Grid.Row="1" Visibility="Collapsed">
             <Grid.ColumnDefinitions>
@@ -82,7 +86,6 @@
             <CommandBar.SecondaryCommands>
                 <AppBarButton Click="btnSplit_Click" Icon="Repair" Label="Split by Platform"/>
                 <AppBarButton Click="btnCopyFromOmni_Click" Icon="MoveToFolder" Label="Clone From Omni"/>
-                <AppBarButton Click="btnSetTeam_Click" Icon="AddFriend" Label="Set Team"/>
             </CommandBar.SecondaryCommands>
         </CommandBar>
         <StackPanel Orientation="Horizontal" Grid.Row="4" >

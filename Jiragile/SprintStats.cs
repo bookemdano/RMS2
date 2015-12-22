@@ -19,7 +19,7 @@ namespace JiraShare
         // TODONE 2104/07/28 zipped all files
         // TODO Save a copy as json, let clean clear them all out.
         static dynamic _oldStat;
-        internal static async Task<SprintStats> ReadStats(JiraSet currentSprint)
+        internal static SprintStats ReadStats(JiraSet currentSprint)
         {
             var key = currentSprint.Key;
             var rv = new SprintStats(key);
@@ -28,14 +28,13 @@ namespace JiraShare
             if (end > DateTimeOffset.Now)
                 end = DateTimeOffset.Now;
 
-            SprintStat lastStat = null;
             for (var dt = start; dt <= end; dt = dt.AddHours(1))
             {
                 var stat = new SprintStat();
                 stat.Timestamp = dt;
                 foreach (var issue in currentSprint.Issues)
                 {
-                    var changes = issue.Changes.Where(c => c.Timestamp < dt);
+                    var changes = issue.Changes.FieldChanges("status").Where(c => c.Timestamp < dt);
                     UpdateStat(stat, issue, changes);
                 }
                 rv.Add(stat);
@@ -109,7 +108,7 @@ namespace JiraShare
                     var compressed = await FileUtils.ReadAllBytes(JiraFileAccess.GetFile(key, dt));
                     if (logEachSpeed)
                         FileUtils.Log("ReadAllBytes " + dt, sw);
-                    var str = JiraFileAccess.UnZipStr(compressed);
+                    var str = FileUtils.UnZipStr(compressed);
 
                     if (logEachSpeed)
                         FileUtils.Log("UnZipStr " + dt, sw);

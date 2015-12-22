@@ -135,7 +135,7 @@ namespace Jiragile
                 {
                     canvas.Visibility = UIUtils.IsVisible(true);
                     rowChart.Height = new GridLength(1, GridUnitType.Star);
-                    var stats = await SprintStats.ReadStats(_jiraSet);
+                    var stats = SprintStats.ReadStats(_jiraSet);
                     var grapher = new SprintGrapher(canvas, stats, false, true);
                 }
                 else
@@ -711,6 +711,55 @@ namespace Jiragile
             }
             await Refresh(LoadEnum.Latest);
         }
+
+        private async void btnBugs_Click(object sender, RoutedEventArgs e)
+        {
+            //var str = await JiraHttpAccess.GetBugsLiveAsync();
+            var compressed = await FileUtils.ReadAllBytes("BUGS-20151222 133617.jz");
+            var str = FileUtils.UnZipStr(compressed);
+            var set = JiraSet.Parse(str);
+            var outs = new List<string>();
+            string line;
+            foreach (var issue in set.Issues)
+            {
+                var prevStatus = "Open";
+                var prevSeverity = issue.Changes.FirstChange("CS Severity")?.OldValue;
+                if (prevSeverity == null)
+                    prevSeverity = issue.Severity;
+
+                line = "ACREATE," + issue.CreatedDate.LocalDateTime + "," + issue.Key + "," + prevStatus + "," + prevSeverity;
+                outs.Add(line);
+
+                var changes = issue.Changes.AllChanges.Where(c => c.Field == "status" || c.Field == "CS Severity");
+                foreach(var change in changes)
+                {
+                    if (change.Field == "status")
+                    {
+                        if (prevStatus == change.NewValue)
+                            continue;
+                        prevStatus = change.NewValue;
+                    }
+                    else
+                    {
+                        if (prevSeverity == change.NewValue)
+                            continue;
+                        prevSeverity = change.NewValue;
+                    }
+                    line = "CHANGE," + change.Timestamp.LocalDateTime + "," + issue.Key + "," + prevStatus + "," + prevSeverity + "," + change.Field;
+                    outs.Add(line);
+                }
+                line = "CURRENT," + DateTimeOffset.Now.LocalDateTime + "," + issue.Key + "," + issue.Status + "," + issue.Severity;
+                //outs.Add(line);
+            }
+            await FileUtils.WriteAllText("bugs.csv", string.Join(Environment.NewLine, outs.ToArray()));
+        }
+    }
+    public class SubChange
+    {
+        public string Key { get; set; }
+        public string Status { get; set; }
+        public string Severity { get; set; }
+        public DateTimeOffset Timestamp { get; set; }
     }
     public class SprintClass
     {

@@ -95,6 +95,16 @@ namespace JiraShare
             request += FieldsToGet();
             return LatestApi(JiraSourceEnum.Default) + request;
         }
+        internal static string GetBugsUri()
+        {
+            //str = HttpGet(_latestApi + @"/search?jql=project=MOB AND Sprint='Sprint 16' and issuetype not in (subTaskIssueTypes())&maxResults=200&fields=parent,summary,subtasks,assignee," + JiraIssue.IssueTypeField);
+            string jql = "issuetype = 'Production Bug'";
+            //jql += " AND Status!='Closed'";
+            jql += " and(project = 'RA' OR project = 'RTS' OR project = 'RTSCS' OR project = 'RACS')";
+            var request = @"/search?jql=" + jql + "&maxResults=1000&expand=changelog";
+            request += FieldsToGet();
+            return LatestApi(JiraSourceEnum.Default) + request;
+        }
         internal static string GetEpicsUri(string project)
         {
             //str = HttpGet(_latestApi + @"/search?jql=project=MOB AND Sprint='Sprint 16' and issuetype not in (subTaskIssueTypes())&maxResults=200&fields=parent,summary,subtasks,assignee," + JiraIssue.IssueTypeField);
@@ -127,7 +137,7 @@ namespace JiraShare
                     "parent", "summary", "assignee", "components", "versions", "fixVersions", "status",
                     "timetracking", JiraIssue.StoryPointField, "issuetype", JiraIssue.DefaultSprintField,
                     JiraIssue.EpicLinkField, JiraIssue.EpicStatusField, "labels", JiraIssue.CaseFilesField,
-                    JiraIssue.CloudTeamField, JiraIssue.OmniTeamField };
+                    JiraIssue.CloudTeamField, JiraIssue.OmniTeamField, JiraIssue.SeverityField, "created" };
             return "&fields=" + string.Join(",", fields);
         }
         internal static string IssueUri(JiraSourceEnum source, string key)
@@ -328,6 +338,10 @@ namespace JiraShare
             int rv = 0;
             foreach (var datedFile in datedFiles)
             {
+                if (!datedFile.Contains("201"))
+                    continue;
+                if (datedFile.Contains("Bug"))
+                    continue;
                 if (!saved.Contains(datedFile))
                 {
                     FileUtils.Delete(datedFile);
@@ -395,16 +409,16 @@ namespace JiraShare
             return rv;
         }
 
-        internal static async Task Write(string filenameStub, string str)
+        internal static async Task Write(string filenameStub, string str, bool overrideUncompressed = false)
         {
             var name = GetFile(filenameStub, DateTimeOffset.Now);
             if (str.Length == 0)
                 return;
-            var compressed = ZipStr(str);
+            var compressed = FileUtils.ZipStr(str);
             if (compressed.Length == 0)
                 return;
             await FileUtils.WriteAllBytes(name, compressed);
-            if (_saveUncompressedCopy)   // write an uncompressed copy
+            if (_saveUncompressedCopy || overrideUncompressed)   // write an uncompressed copy
             {
                 name = System.IO.Path.ChangeExtension(name, ".json");
                 await FileUtils.WriteAllText(name, str);
@@ -420,43 +434,8 @@ namespace JiraShare
             var compressed = await FileUtils.ReadAllBytes(filename);
             if (compressed == null || compressed.Length == 0)
                 return null;
-            var str = UnZipStr(compressed);
+            var str = FileUtils.UnZipStr(compressed);
             return new Tuple<string, DateTimeOffset>(str, dt);
-        }
-
-
-        public static byte[] ZipStr(String str)
-        {
-            using (var output = new System.IO.MemoryStream())
-            {
-                using (DeflateStream gzip =
-                  new DeflateStream(output, CompressionMode.Compress))
-                {
-                    using (var writer =
-                      new System.IO.StreamWriter(gzip, System.Text.Encoding.UTF8))
-                    {
-                        writer.Write(str);
-                    }
-                }
-
-                return output.ToArray();
-            }
-        }
-
-        public static string UnZipStr(byte[] input)
-        {
-            using (var inputStream = new System.IO.MemoryStream(input))
-            {
-                using (var gzip =
-                  new DeflateStream(inputStream, CompressionMode.Decompress))
-                {
-                    using (var reader =
-                      new System.IO.StreamReader(gzip, System.Text.Encoding.UTF8))
-                    {
-                        return reader.ReadToEnd();
-                    }
-                }
-            }
         }
     }
     public static class JiraHttpAccess
@@ -465,7 +444,14 @@ namespace JiraShare
         {
             var rv = await HttpAccess.HttpGetAsync(JiraAccess.GetSprintUri(project, sprint), returnError);
             if (!rv.StartsWith("ERROR:"))
-                JiraFileAccess.Write(new SprintKey(project, sprint).ToFilename(), rv);
+                await JiraFileAccess.Write(new SprintKey(project, sprint).ToFilename(), rv);
+            return rv;
+        }
+        public static async Task<string> GetBugsLiveAsync()
+        {
+            var rv = await HttpAccess.HttpGetAsync(JiraAccess.GetBugsUri(), true);
+            if (!rv.StartsWith("ERROR:"))
+                await JiraFileAccess.Write("BUGS", rv, true);
             return rv;
         }
         public static async Task<string> GetSprintLive(string project, string sprint, bool showError)
@@ -473,14 +459,14 @@ namespace JiraShare
             var rv = await HttpAccess.HttpGetAsync(JiraAccess.GetSprintUri(project, sprint), showError);
             //var rv = HttpAccess.HttpGet(JiraAccess.GetSprintUri(project, sprint), showError);
             //File.WriteAllLines("search.fancy.json", SplitLinesDeep(str));
-            JiraFileAccess.Write(new SprintKey(project, sprint).ToFilename(), rv);
+            await JiraFileAccess.Write(new SprintKey(project, sprint).ToFilename(), rv);
             return rv;
         }
         public static async Task<string> GetEpicsLive(string project, bool showError, bool saveFile = true)
         {
             var rv = await HttpAccess.HttpGetAsync(JiraAccess.GetEpicsUri(project), showError);
             if (saveFile)
-                JiraFileAccess.Write(project + "-Epics", rv);
+                await JiraFileAccess.Write(project + "-Epics", rv);
             return rv;
         }
 
@@ -488,7 +474,7 @@ namespace JiraShare
         {
             var rv = await HttpAccess.HttpGetAsync(JiraAccess.GetIssuesForEpicUri(epicKey), showError);
             if (saveFile)
-                JiraFileAccess.Write("Epic-" + epicKey + "-Issues", rv);
+                await JiraFileAccess.Write("Epic-" + epicKey + "-Issues", rv);
             return rv;
         }
     }
