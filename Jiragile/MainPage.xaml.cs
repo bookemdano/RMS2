@@ -162,7 +162,7 @@ namespace Jiragile
                 {
                     if (loadEnum == LoadEnum.LiveOnlyIfOld)
                     {
-                        if (_jiraSet != null && _jiraSet.RetrieveTime.Age().TotalMinutes < 5)
+                        if (_jiraSet != null && _jiraSet.RetrieveTime.Age().TotalMinutes < 60)  // 5 minutes
                         {
                             staStatus.Text = "Not Updated " + _jiraSet.RetrieveTime.RelativeTime();
                             return false;
@@ -715,23 +715,28 @@ namespace Jiragile
         private async void btnBugs_Click(object sender, RoutedEventArgs e)
         {
             //var str = await JiraHttpAccess.GetBugsLiveAsync();
-            var compressed = await FileUtils.ReadAllBytes("BUGS-20151222 133617.jz");
+            var compressed = await FileUtils.ReadAllBytes("BUGS.jz");
             var str = FileUtils.UnZipStr(compressed);
             var set = JiraSet.Parse(str);
+            var allBugs = new List<Bug>();
             var outs = new List<string>();
             string line;
             foreach (var issue in set.Issues)
             {
+                var bug = new Bug(issue.Key);
+                allBugs.Add(bug);
+
                 var prevStatus = "Open";
                 var prevSeverity = issue.Changes.FirstChange("CS Severity")?.OldValue;
                 if (prevSeverity == null)
                     prevSeverity = issue.Severity;
 
+                bug.SubChanges.Add(new SubChange(issue.CreatedDate, "Create", prevStatus, prevSeverity));
                 line = "ACREATE," + issue.CreatedDate.LocalDateTime + "," + issue.Key + "," + prevStatus + "," + prevSeverity;
                 outs.Add(line);
 
                 var changes = issue.Changes.AllChanges.Where(c => c.Field == "status" || c.Field == "CS Severity");
-                foreach(var change in changes)
+                foreach (var change in changes)
                 {
                     if (change.Field == "status")
                     {
@@ -746,20 +751,197 @@ namespace Jiragile
                         prevSeverity = change.NewValue;
                     }
                     line = "CHANGE," + change.Timestamp.LocalDateTime + "," + issue.Key + "," + prevStatus + "," + prevSeverity + "," + change.Field;
+                    bug.SubChanges.Add(new SubChange(change.Timestamp, change.Field, prevStatus, prevSeverity));
                     outs.Add(line);
                 }
                 line = "CURRENT," + DateTimeOffset.Now.LocalDateTime + "," + issue.Key + "," + issue.Status + "," + issue.Severity;
                 //outs.Add(line);
             }
+
             await FileUtils.WriteAllText("bugs.csv", string.Join(Environment.NewLine, outs.ToArray()));
+
+
+            var start = set.Issues.Min(i => i.CreatedDate).Date;
+            var lastTime = start;
+            start = start.AddDays(1);
+            var end = DateTimeOffset.Now.Date.AddDays(1);
+            var datedBugs = new Dictionary<DateTimeOffset, BugSnapshot[]>();
+            var addeds = new Dictionary<DateTimeOffset, int[]>();
+            var closeds = new Dictionary<DateTimeOffset, int[]>();
+            var dailyBugs = new List<BugSnapshot>();
+            for (var dt = start; dt <= end; dt = dt.AddDays(1))
+            {
+                addeds.Add(dt, new int[4]);
+                closeds.Add(dt, new int[4]);
+                foreach (var bug in allBugs)
+                {
+                    var dailyChanges = bug.SubChanges.Where(s => s.Timestamp > lastTime && s.Timestamp < dt);
+                    if (dailyChanges.Count() == 0)
+                        continue;
+                    for (int iSev = 0; iSev <= 3; iSev++)
+                    {
+                        if (dailyChanges.Any(d => d.SeverityChanged && d.HasSeverity(iSev)))
+                        {
+                            addeds[dt][iSev]++;
+                            break;
+                        }
+                    }
+
+                    var last = dailyChanges.Last();
+                    var found = dailyBugs.SingleOrDefault(b => b.Key == bug.Key);
+                    if (last.IsDone)
+                    {   // got closed
+                        for (int iSev = 0; iSev <= 3; iSev++)
+                        {
+                            if (dailyChanges.Any(d => d.HasSeverity(iSev)))
+                            {
+                                closeds[dt][iSev]++;
+                                break;
+                            }
+                        }
+
+                        if (found == null)
+                            continue;
+                        dailyBugs.Remove(found);
+                    }
+                    else
+                    {
+                        if (found == null)
+                            dailyBugs.Add(new BugSnapshot(bug.Key, last));
+                        else
+                            found.SubChange = last;
+                    }
+                }
+                datedBugs.Add(dt, dailyBugs.ToArray());
+                lastTime = dt;
+            }
+            var sevOut = new List<string>();
+            var header = "Date";
+            for (int iSev = 0; iSev <= 3; iSev++)
+                header += ",New" + iSev + ",Closed" + iSev + ",Open" + iSev + ",WIP" + iSev + ",Blocked" + iSev;
+            sevOut.Add(header);
+            foreach (var kvp in datedBugs)
+            {
+                var bugs = kvp.Value;
+                var outParts = new List<string>();
+                var dt = kvp.Key;
+                var addedToday = addeds[dt];
+                var closedToday = closeds[dt];
+                for (int iSev = 0; iSev <= 3; iSev++)
+                {
+                    outParts.Add(addedToday[iSev].ToString());
+                    outParts.Add(closedToday[iSev].ToString());
+                    var sevBugs = bugs.Where(c => c.SubChange.HasSeverity(iSev));
+                    var open = sevBugs.Count(c => c.SubChange.IsOpen);
+                    var blocked = sevBugs.Count(c => c.SubChange.IsBlocked);
+                    var inProgress = sevBugs.Count() - open - blocked;
+
+                    outParts.Add(open.ToString());
+                    outParts.Add(inProgress.ToString());
+                    outParts.Add(blocked.ToString());
+                }
+
+                sevOut.Add(dt.Date + "," + string.Join(",", outParts.ToArray()));
+            }
+            await FileUtils.WriteAllText("sevs.csv", string.Join(Environment.NewLine, sevOut.ToArray()));
+            var lastBugs = new List<string>();
+            var lastDate = datedBugs.Last();
+            foreach (var bug in lastDate.Value)
+            {
+                lastBugs.Add(bug.ToString());
+            }
+            await FileUtils.WriteAllText("lastBugs.csv", string.Join(Environment.NewLine, lastBugs.ToArray()));
+
         }
+    }
+    public class BugSnapshot
+    {
+        public BugSnapshot(string key, SubChange subChange)
+        {
+            Key = key;
+            SubChange = subChange;
+        }
+        public override string ToString()
+        {
+            return Key + "," + SubChange.ToString();
+        }
+        public string Key { get; set; }
+        public SubChange SubChange { get; set; }
+    }
+    public class Bug
+    {
+        public Bug(string key)
+        {
+            Key = key;
+        }
+        public override string ToString()
+        {
+            return Key + " " + SubChanges.Count() + " changes";
+        }
+        public string Key { get; set; }
+        public List<SubChange> SubChanges { get; set; } = new List<SubChange>();
     }
     public class SubChange
     {
-        public string Key { get; set; }
+        public SubChange(DateTimeOffset timestamp, string field, string status, string severity)
+        {
+            Field = field;
+            Timestamp = timestamp;
+            Status = status;
+            Severity = severity;
+        }
+        public override string ToString()
+        {
+            return Field + " " + Timestamp.Date + " " + Status + " " + Severity;
+        }
+
+        internal bool HasSeverity(int i)
+        {
+            if (string.IsNullOrWhiteSpace(Severity))
+                return false;
+            return Severity.StartsWith(i.ToString());
+        }
+
+        public string Field { get; set; }
         public string Status { get; set; }
         public string Severity { get; set; }
         public DateTimeOffset Timestamp { get; set; }
+        public bool IsDone
+        {
+            get
+            {
+                return (Status == "Resolved" || Status == "Closed"); // || Status == "Blocked")
+            }
+        }
+        public bool IsBlocked
+        {
+            get
+            {
+                return (Status == "Blocked");
+            }
+        }
+        public bool IsOpen
+        {
+            get
+            {
+                return (Status == "Open");
+            }
+        }
+
+        public bool SeverityChanged
+        {
+            get
+            {
+                return (Field == "CS Severity" || Field == "Create");
+            }
+        }
+        public bool StatusChanged
+        {
+            get
+            {
+                return (Field == "status" || Field == "Create");
+            }
+        }
     }
     public class SprintClass
     {

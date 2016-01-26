@@ -97,6 +97,7 @@ namespace JiraShare
         }
         internal static string GetBugsUri()
         {
+            //issuetype = 'Production Bug' and(project = 'RA' OR project = 'RTS' OR project = 'RTSCS' OR project = 'RACS') and status!=closed and status!=resolved
             //str = HttpGet(_latestApi + @"/search?jql=project=MOB AND Sprint='Sprint 16' and issuetype not in (subTaskIssueTypes())&maxResults=200&fields=parent,summary,subtasks,assignee," + JiraIssue.IssueTypeField);
             string jql = "issuetype = 'Production Bug'";
             //jql += " AND Status!='Closed'";
