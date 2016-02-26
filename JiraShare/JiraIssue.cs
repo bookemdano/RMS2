@@ -911,9 +911,7 @@ namespace JiraShare
             }
             else
             {
-                //MessageBox.Show("Bad Sprint Text Format- should be like 'MOB Sprint 25' not " + sprintText);
-                Project = "MOB";
-                Sprint = "Sprint 1";
+                //MessageBox.Show("Bad Sprint Text Format- should be like 'RA 2016.R2.S3.Mobile' not " + sprintText);
             }
         }
         public SprintKey(string project, string sprint)
