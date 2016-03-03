@@ -138,7 +138,7 @@ namespace JiraShare
                     "parent", "summary", "assignee", "components", "versions", "fixVersions", "status",
                     "timetracking", JiraIssue.StoryPointField, "issuetype", JiraIssue.DefaultSprintField,
                     JiraIssue.EpicLinkField, JiraIssue.EpicStatusField, "labels", JiraIssue.CaseFilesField,
-                    JiraIssue.CloudTeamField, JiraIssue.OmniTeamField, JiraIssue.SeverityField, "created" };
+                    JiraIssue.CloudTeamField, JiraIssue.OmniTeamField, JiraIssue.SeverityField, "created", "resolution" };
             return "&fields=" + string.Join(",", fields);
         }
         internal static string IssueUri(JiraSourceEnum source, string key)

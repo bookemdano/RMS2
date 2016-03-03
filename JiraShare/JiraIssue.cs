@@ -71,6 +71,7 @@ namespace JiraShare
             Parent = other.Parent;
             ParentIssue = other.ParentIssue;
             StoryPoints = other.StoryPoints;
+            Resolution = other.Resolution;
             foreach (var name in other.Sprints)
                 Sprints.Add(name);
             foreach (var change in other.Changes.AllChanges)
@@ -430,6 +431,7 @@ namespace JiraShare
                 else
                     rv.Source = JiraSourceEnum.SDLC;
                 rv.IsSubtask = (bool)issueType["subtask"];
+                rv.Resolution = GetString(fields, "resolution", "name");
                 if (fields["created"] != null)
                     rv.CreatedDate = (DateTimeOffset)fields["created"];
                 else
@@ -670,6 +672,8 @@ namespace JiraShare
                 return Key.Split("-".ToCharArray())[0];
             }
         }
+
+        public string Resolution { get; private set; }
 
         public static string ConvertToUrl(string text)
         {
