@@ -51,8 +51,7 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <TextBox Name="entSearch" Grid.Column="0" TextChanged="entSearch_TextChanged"/>
-            <Button Click="btnSearchOld_Click" Grid.Column="1">Old</Button>
-            <Button Click="btnSearchNew_Click" Grid.Column="2">New</Button>
+            <Button Click="btnSearchNew_Click" Grid.Column="1" Grid.ColumnSpan="2">Search</Button>
             <Button Click="btnSearchClear_Click" Grid.Column="3">Clear</Button>
         </Grid>
         <StackPanel Name="pnlFilter" Orientation="Horizontal" Grid.Row="1" Visibility="Collapsed">

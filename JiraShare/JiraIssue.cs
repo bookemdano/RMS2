@@ -892,6 +892,7 @@ namespace JiraShare
         }
 
         public SprintKey Key { get; set; }
+        public bool FromFile { get; set; }
     }
 
     public class SprintKey

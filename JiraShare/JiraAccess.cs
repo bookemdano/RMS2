@@ -102,6 +102,7 @@ namespace JiraShare
             string jql = "issuetype = 'Production Bug'";
             //jql += " AND Status!='Closed'";
             jql += " and(project = 'RA' OR project = 'RTS' OR project = 'RTSCS' OR project = 'RACS')";
+            //jql += " and Team=Mobile";
             var request = @"/search?jql=" + jql + "&maxResults=1000&expand=changelog";
             request += FieldsToGet();
             return LatestApi(JiraSourceEnum.Default) + request;
@@ -341,7 +342,7 @@ namespace JiraShare
             {
                 if (!datedFile.Contains("201"))
                     continue;
-                if (datedFile.Contains("Bug"))
+                if (datedFile.ToUpper().Contains("BUG"))
                     continue;
                 if (!saved.Contains(datedFile))
                 {
@@ -386,9 +387,13 @@ namespace JiraShare
             return GetFile(key.ToFilename(), timestamp);
         }
 
-        public static string GetFile(string filenameStub, DateTimeOffset timestamp)
+        public static string GetFile(string filenameStub, DateTimeOffset? timestamp)
         {
-            return filenameStub + "-" + timestamp.ToString("yyyyMMdd HHmmss") + ".jz";
+            var rv = filenameStub;
+            if (timestamp.HasValue)
+                rv += "-" + timestamp.Value.ToString("yyyyMMdd HHmmss");
+            rv += ".jz";
+            return rv;
         }
 
         public static async Task WriteResults(string filename, string str)
@@ -410,19 +415,25 @@ namespace JiraShare
             return rv;
         }
 
-        internal static async Task Write(string filenameStub, string str, bool overrideUncompressed = false)
+        internal static async Task Write(string filenameStub, string str, bool overrideUncompressed = false, bool saveUndated = false)
         {
-            var name = GetFile(filenameStub, DateTimeOffset.Now);
             if (str.Length == 0)
                 return;
             var compressed = FileUtils.ZipStr(str);
             if (compressed.Length == 0)
                 return;
-            await FileUtils.WriteAllBytes(name, compressed);
+
+            var datedName = GetFile(filenameStub, DateTimeOffset.Now);
+            await FileUtils.WriteAllBytes(datedName, compressed);
+            if (saveUndated)
+            {
+                var name = GetFile(filenameStub, null);
+                await FileUtils.WriteAllBytes(name, compressed);
+            }
             if (_saveUncompressedCopy || overrideUncompressed)   // write an uncompressed copy
             {
-                name = System.IO.Path.ChangeExtension(name, ".json");
-                await FileUtils.WriteAllText(name, str);
+                datedName = System.IO.Path.ChangeExtension(datedName, ".json");
+                await FileUtils.WriteAllText(datedName, str);
             }
         }
 
@@ -452,7 +463,7 @@ namespace JiraShare
         {
             var rv = await HttpAccess.HttpGetAsync(JiraAccess.GetBugsUri(), true);
             if (!rv.StartsWith("ERROR:"))
-                await JiraFileAccess.Write("BUGS", rv, true);
+                await JiraFileAccess.Write("Bugs", rv, true, true);
             return rv;
         }
         public static async Task<string> GetSprintLive(string project, string sprint, bool showError)
