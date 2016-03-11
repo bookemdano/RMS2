@@ -9,7 +9,6 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Windows.ApplicationModel.DataTransfer;
-using Windows.Storage.Pickers;
 using Windows.System;
 using Windows.UI.Popups;
 using Windows.UI.Text;
@@ -35,7 +34,7 @@ namespace Jiragile
         {
             try
             {
-                _toolTgls = new List<ToggleButton>() { tglSprint, tglSearch, tglSort, tglFilter };
+                _toolTgls = new List<ToggleButton>() { tglSprint, tglSearch, tglSort, tglFilter, tglBugs };
                 _sortTgls = new List<ToggleButton>() { tglSortByStatus, tglSortByVersion, tglSortByAssignee };
                 FileUtils.GetSetting(tglShowOnHold);
                 FileUtils.GetSetting(tglShowOther);
@@ -43,16 +42,12 @@ namespace Jiragile
                 FileUtils.GetSetting(tglShowTesting);
                 FileUtils.GetSetting(tglShowSubtasks);
 
-                FileUtils.GetSetting(tglSortByStatus);
-                FileUtils.GetSetting(tglSortByVersion);
-                FileUtils.GetSetting(tglSortByAssignee);
+                foreach (var tgl in _sortTgls)
+                    FileUtils.GetSetting(tgl);
 
-                FileUtils.GetSetting(tglSprint);
-                FileUtils.GetSetting(tglFilter);
-                FileUtils.GetSetting(tglSort);
-                FileUtils.GetSetting(tglSearch);
                 foreach (var tgl in _toolTgls)
                 {
+                    FileUtils.GetSetting(tgl);
                     if (tgl.IsChecked == true)
                     {
                         SelectTool(tgl);
@@ -65,6 +60,19 @@ namespace Jiragile
 
                 FileUtils.GetSetting(entSprint, "AP 2015.R4.S5.Mobile");
 
+                cmbTeam.Items.Add("");
+                cmbTeam.Items.Add("Mobile");
+                cmbTeam.Items.Add("RA - SWAT");
+                cmbTeam.Items.Add("RTS - Feature");
+                cmbTeam.Items.Add("RA - Feature");
+                cmbTeam.Items.Add("RA - Insight");
+                cmbTeam.Items.Add("RA - Telematics");
+                cmbTeam.Items.Add("Algo");
+                cmbTeam.Items.Add("GIS");
+                cmbTeam.Items.Add("Localization");
+                cmbTeam.Items.Add("Mobile - EP");
+                cmbTeam.Items.Add("Navigation");
+                cmbTeam.Items.Add("Architecture");
                 var timer = new DispatcherTimer();
                 timer.Interval = TimeSpan.FromSeconds(3);
                 timer.Tick += Timer_Tick;
@@ -89,9 +97,11 @@ namespace Jiragile
         private async void Page_Loaded(object sender, RoutedEventArgs e)
         {
             await Refresh(LoadEnum.Latest);
+            _loaded = true; // checked by resize
         }
 
         JiraSet _jiraSet;
+        bool _loaded = false;
         async Task Refresh(LoadEnum loadEnum)
         {
             try
@@ -314,7 +324,8 @@ namespace Jiragile
 
         private async void Page_SizeChanged(object sender, SizeChangedEventArgs e)
         {
-            await Refresh(LoadEnum.Latest);
+            if (!_loaded)   // this is a hack, forgive me
+                await Refresh(LoadEnum.Latest);
         }
         private enum ToolEnum
         {
@@ -322,7 +333,8 @@ namespace Jiragile
             Sprint,
             Filter,
             Sort,
-            Search
+            Search,
+            Bugs
         }
         private enum SortEnum
         {
@@ -359,6 +371,8 @@ namespace Jiragile
                 tools = ToolEnum.Search;
             else if (tgl == tglSort)
                 tools = ToolEnum.Sort;
+            else if (tgl == tglBugs)
+                tools = ToolEnum.Bugs;
             else
                 tools = ToolEnum.Filter;
 
@@ -367,6 +381,7 @@ namespace Jiragile
             pnlFilter.Visibility = UIUtils.IsVisible(tools == ToolEnum.Filter);
             pnlSort.Visibility = UIUtils.IsVisible(tools == ToolEnum.Sort);
             pnlSearch.Visibility = UIUtils.IsVisible(tools == ToolEnum.Search);
+            pnlBugs.Visibility = UIUtils.IsVisible(tools == ToolEnum.Bugs);
         }
 
         private async void tglChart_Click(object sender, RoutedEventArgs e)
@@ -722,503 +737,13 @@ namespace Jiragile
 
         private async void btnBugs_Click(object sender, RoutedEventArgs e)
         {
+            (sender as Button).IsEnabled = false;
             //UploadToSharepoint();
+            staStatus.Text = "Generating Bug Reports";
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            staStatus.Text = "Reading Bug Counts " + sw.Elapsed.TotalSeconds.ToString("0") + "s";
-            sw.Restart();
-            var set = await GetBugSet();
-            staStatus.Text = "Analyzing Bug Counts " + sw.Elapsed.TotalSeconds.ToString("0") + "s";
-            sw.Restart();
-            List<BugWithChanges> allBugs = await ConvertToBugs(set);
-
-            await LogBugChanges(allBugs);
-
-            var start = set.Issues.Min(i => i.CreatedDate).Date;
-            var datedStats = GetDatedBugs(allBugs, start);
-
-            staStatus.Text = "Write Sevs " + sw.Elapsed.TotalSeconds.ToString("0") + "s";
-            sw.Restart();
-            await CreateSeverityFile(datedStats, set.FromFile);
-
-            staStatus.Text = "Done Bug Counts " + sw.Elapsed.TotalSeconds.ToString("0") + "s";
-        }
-
-        private static async Task CreateSeverityFile(DatedStats datedStats, bool fromFile)
-        {
-            var sevOut = new List<string>();
-            var header = "Date";
-            foreach (var product in Enum.GetValues(typeof(BugSnapshot.ProductEnum)))
-            {
-                for (int iSev = 0; iSev <= 3; iSev++)
-                {
-                    header += ",New" + product + iSev + ",JustClosed" + product + iSev + CountArray.CsvHeader(product.ToString(), iSev.ToString());
-                }
-                header += CountArray.CsvHeader(product.ToString(), null);
-            }
-            header += CountArray.CsvHeader(null, null);
-            sevOut.Add(header);
-            foreach (var kvp in datedStats.Bugs)
-            {
-                var bugs = kvp.Value;
-                var outParts = new List<string>();
-                var dt = kvp.Key;
-                var total = new CountArray();
-                foreach (BugSnapshot.ProductEnum product in Enum.GetValues(typeof(BugSnapshot.ProductEnum)))
-                {
-                    var prodBugs = bugs.Where(b => b.HasProduct(product));
-                    var byProd = new CountArray();
-                    for (int iSev = 0; iSev <= 3; iSev++)
-                    {
-                        outParts.Add(datedStats.ProdCounts.GetCount(ProductCounts.DirectionEnum.Added, dt, product, iSev).ToString());
-                        outParts.Add(datedStats.ProdCounts.GetCount(ProductCounts.DirectionEnum.Closed, dt, product, iSev).ToString());
-                        var bySev = new CountArray();
-                        var sevBugs = prodBugs.Where(c => c.SubChange.HasSeverity(iSev));
-                        bySev.Open = sevBugs.Count(c => c.SubChange.IsOpen);
-                        bySev.Blocked = sevBugs.Count(c => c.SubChange.IsBlocked);
-                        bySev.Resolved = sevBugs.Count(c => c.SubChange.IsResolved);
-                        var closedBugs = sevBugs.Where(c => c.SubChange.IsClosed);
-                        bySev.ClosedFixed = closedBugs.Count(c => c.Bug.IsFixed);
-                        bySev.ClosedNot = closedBugs.Count() - bySev.ClosedFixed;
-                        bySev.InProgress = sevBugs.Count() - bySev.Open - bySev.Blocked - bySev.Closed - bySev.Resolved;
-                        outParts.AddRange(bySev.Strings());
-                        byProd.Increment(bySev);
-                    }
-                    outParts.AddRange(byProd.Strings());
-                    total.Increment(byProd);
-                }
-                outParts.AddRange(total.Strings());
-                sevOut.Add(dt.Date.ToString(@"M/d/yyyy") + "," + string.Join(",", outParts.ToArray()));
-            }
-            string defName = "sevs " + DateTimeOffset.Now.ToString("yyyyMMdd HHmm");
-            await FileUtils.WriteAllText(defName + ".csv", string.Join(Environment.NewLine, sevOut.ToArray()));
-            if (fromFile)
-                defName = defName.Replace("sevs", "sevsFromFile");
-            await FileUtils.WriteAllTextWithPicker(defName, string.Join(Environment.NewLine, sevOut.ToArray()), "csv");
-        }
-        public class CountArray
-        {
-            static public string CsvHeader(string product, string iSev)
-            {
-                return ",Open" + product + iSev + ",WIP" + product + iSev + ",Blocked" + product + iSev + ",Resolved" + product + iSev + ",ClosedFixed" + product + iSev + ",ClosedNot" + product + iSev + ",Closed" + product + iSev;
-            }
-            public IList<string> Strings()
-            {
-                var rv = new List<string>();
-                rv.Add(Open.ToString());
-                rv.Add(InProgress.ToString());
-                rv.Add(Blocked.ToString());
-                rv.Add(Resolved.ToString());
-                rv.Add(ClosedFixed.ToString());
-                rv.Add(ClosedNot.ToString());
-                rv.Add(Closed.ToString());
-
-                return rv;
-            }
-
-            internal void Increment(CountArray other)
-            {
-                Open += other.Open;
-                InProgress += other.InProgress;
-                Blocked += other.Blocked;
-                Resolved += other.Resolved;
-                ClosedFixed += other.ClosedFixed;
-                ClosedNot += other.ClosedNot;
-            }
-
-            public int Open { get; set; }
-            public int Blocked { get; set; }
-            public int Resolved { get; set; }
-            public int ClosedFixed { get; set; }
-            public int ClosedNot { get; set; }
-            public int Closed
-            {
-                get
-                {
-                    return ClosedFixed + ClosedNot;
-                }
-            }
-            public int InProgress { get; set; }
-        }
-        private async Task<JiraSet> GetBugSet()
-        {
-            var useFile = false;
-#if DEBUG
-            if (System.Diagnostics.Debugger.IsAttached)
-                useFile = true;
-#endif
-            string str = string.Empty;
-            if (useFile)
-            {
-                str = FileUtils.UnZipStr(await FileUtils.ReadAllBytes("Bugs.jz"));
-                if (string.IsNullOrEmpty(str))
-                    useFile = false;
-            }
-            if (useFile == false)
-                str = await JiraHttpAccess.GetBugsLiveAsync();
-            var rv = JiraSet.Parse(str);
-            rv.FromFile = useFile;
-            return rv;
-        }
-        private static DatedStats GetDatedBugs(List<BugWithChanges> allBugs, DateTime start)
-        {
-            var rv = new DatedStats();
-            var lastTime = start;
-            start = start.AddDays(1);
-            var end = DateTimeOffset.Now.Date.AddDays(1);
-            var bugSnapshots = new List<BugSnapshot>();
-            for (var dt = start; dt <= end; dt = dt.AddDays(1))
-            {
-                rv.ProdCounts.Add(dt);
-
-                foreach (var bug in allBugs)
-                {
-                    var dailyChanges = bug.SubChanges.Where(s => s.Timestamp > lastTime && s.Timestamp < dt);
-                    if (dailyChanges.Count() == 0)
-                        continue;
-                    rv.ProdCounts.Update(dt, bug, dailyChanges);
-
-                    var lastChangeToday = dailyChanges.Last();
-                    var found = bugSnapshots.SingleOrDefault(b => b.Bug.Key == bug.Key);
-                    if (found == null)
-                        bugSnapshots.Add(new BugSnapshot(bug as BugInfo, lastChangeToday));
-                    else
-                        found.SubChange = lastChangeToday; // already in list so update for today
-
-                    if (lastChangeToday.IsDone)
-                        rv.ProdCounts.UpdateClosed(dt, bug, dailyChanges);
-                }
-                rv.AddBugs(dt, bugSnapshots);
-                lastTime = dt;
-            }
-            return rv;
-        }
-
-
-        private static async Task<List<BugWithChanges>> ConvertToBugs(JiraSet set)
-        {
-            var allBugs = new List<BugWithChanges>();
-            var outs = new List<string>();
-            outs.Add("Type,Date,key,status,sev,change");
-            string line;
-            foreach (var issue in set.Issues)
-            {
-                if (BugInfo.IsSR(issue))
-                    continue;
-                var bug = new BugWithChanges(issue.Key, issue.Summary, issue.FixVersionsString, issue.Resolution);
-                allBugs.Add(bug);
-                var prevStatus = "Open";
-                var prevSeverity = issue.Changes.FirstChange(SubChange._severity)?.OldValue;
-                if (prevSeverity == null)
-                    prevSeverity = issue.Severity;
-
-                bug.SubChanges.Add(new SubChange(issue.CreatedDate, "Create", prevStatus, prevSeverity));
-                line = "ACREATE," + issue.CreatedDate.LocalDateTime + "," + issue.Key + "," + prevStatus + "," + prevSeverity;
-                outs.Add(line);
-                var changes = issue.Changes.AllChanges.Where(c => c.Field == SubChange._status || c.Field == SubChange._severity);
-                foreach (var change in changes)
-                {
-                    if (change.Field == SubChange._status)
-                    {
-                        if (prevStatus == change.NewValue)
-                            continue;
-                        prevStatus = change.NewValue;
-                    }
-                    else
-                    {
-                        if (prevSeverity == change.NewValue)
-                            continue;
-                        prevSeverity = change.NewValue;
-                    }
-                    line = "CHANGE," + change.Timestamp.LocalDateTime + "," + issue.Key + "," + prevStatus + "," + prevSeverity + "," + change.Field;
-                    bug.SubChanges.Add(new SubChange(change.Timestamp, change.Field, prevStatus, prevSeverity));
-                    outs.Add(line);
-                }
-                line = "CURRENT," + DateTimeOffset.Now.LocalDateTime + "," + issue.Key + "," + issue.Status + "," + issue.Severity;
-                outs.Add(line);
-            }
-
-            await FileUtils.WriteAllText("bugs " + DateTimeOffset.Now.ToString("yyyyMMdd HHmm") + ".csv", string.Join(Environment.NewLine, outs.ToArray()));
-            return allBugs;
-        }
-
-        private static async Task LogBugChanges(List<BugWithChanges> allBugs)
-        {
-            var bugStats = new List<string>();
-            bugStats.Add("bug,first,last,sev,status,resolution,version,blocks,zeros,sevchanges,closedAs0,summary");
-            foreach (var bug in allBugs)
-            {
-                var blocks = bug.SubChanges.Count(s => s.IsBlocked && s.StatusChanged);
-                var zeros = bug.SubChanges.Count(s => (s.HasSeverity(0)) && s.SeverityChanged);
-                var sevchanges = bug.SubChanges.Count(s => s.SeverityChanged);
-                var last = bug.SubChanges.Last();
-                var closedAs0 = last.IsDone && last.HasSeverity(0);
-                var started = bug.SubChanges.First().Timestamp;
-                var ended = last.Timestamp;
-
-                bugStats.Add(bug.Key + "," + started.ToString("g") + "," + ended.ToString("g") + "," + last.Severity + "," + last.Status + "," + bug.Resolution + "," + bug.Version + "," + blocks + "," + zeros + "," + sevchanges + "," + closedAs0+ "," + StringUtils.ReadyForCsv(bug.Summary));
-            }
-            await FileUtils.WriteAllText("BugStats " + DateTimeOffset.Now.ToString("yyyyMMdd HHmm") + ".csv", string.Join(Environment.NewLine, bugStats.ToArray()));
-        }
-    }
-    public class ProductCounts
-    {
-        public ProductCounts()
-        {
-            _addeds = new Dictionary<DateTimeOffset, Dictionary<BugSnapshot.ProductEnum, int[]>>();
-            _closeds = new Dictionary<DateTimeOffset, Dictionary<BugSnapshot.ProductEnum, int[]>>();
-        }
-
-        public void Add(DateTimeOffset dt)
-        {
-            _addeds.Add(dt, new Dictionary<BugSnapshot.ProductEnum, int[]>());
-            _addeds[dt].Add(BugSnapshot.ProductEnum.RA, new int[4]);
-            _addeds[dt].Add(BugSnapshot.ProductEnum.RTS, new int[4]);
-            _closeds.Add(dt, new Dictionary<BugSnapshot.ProductEnum, int[]>());
-            _closeds[dt].Add(BugSnapshot.ProductEnum.RA, new int[4]);
-            _closeds[dt].Add(BugSnapshot.ProductEnum.RTS, new int[4]);
-        }
-
-        internal void Increment(DirectionEnum direction, DateTime dt, BugSnapshot.ProductEnum product, int iSev)
-        {
-            if (direction == DirectionEnum.Added)
-                _addeds[dt][product][iSev]++;
-            else
-                _closeds[dt][product][iSev]++;
-        }
-        public enum DirectionEnum
-        {
-            Added,
-            Closed
-        }
-        internal int GetCount(DirectionEnum direction, DateTimeOffset dt, BugSnapshot.ProductEnum product, int iSev)
-        {
-            if (direction == DirectionEnum.Added)
-                return _addeds[dt][product][iSev];
-            else
-                return _closeds[dt][product][iSev];
-        }
-
-        internal void Update(DateTime dt, BugInfo bug, IEnumerable<SubChange> dailyChanges)
-        {
-            for (int iSev = 0; iSev <= 3; iSev++)
-            {
-                if (dailyChanges.Any(d => d.SeverityChanged && d.HasSeverity(iSev)))
-                {
-                    Increment(ProductCounts.DirectionEnum.Added, dt, bug.Product, iSev);
-                    break;
-                }
-            }
-        }
-
-        internal void UpdateClosed(DateTime dt, BugInfo bug, IEnumerable<SubChange> dailyChanges)
-        {
-            // got closed or resolved
-            for (int iSev = 0; iSev <= 3; iSev++)
-            {
-                if (dailyChanges.Any(d => d.HasSeverity(iSev)))
-                {
-                    Increment(ProductCounts.DirectionEnum.Closed, dt, bug.Product, iSev);
-                    break;
-                }
-            }
-        }
-
-        Dictionary<DateTimeOffset, Dictionary<BugSnapshot.ProductEnum, int[]>> _addeds;
-        Dictionary<DateTimeOffset, Dictionary<BugSnapshot.ProductEnum, int[]>> _closeds;
-    }
-    public class DatedStats
-    {
-        public Dictionary<DateTimeOffset, BugSnapshot[]> Bugs { get; set; } = new Dictionary<DateTimeOffset, BugSnapshot[]>();
-        public ProductCounts ProdCounts { get; set; } = new ProductCounts();
-
-        internal void AddBugs(DateTime dt, List<BugSnapshot> bugSnapshots)
-        {
-            var copiedSnapshots = new BugSnapshot[bugSnapshots.Count()];
-            int i = 0;
-            foreach (var bss in bugSnapshots)
-            {
-                copiedSnapshots[i++] = new BugSnapshot(bss);
-            }
-            Bugs.Add(dt, copiedSnapshots);
-        }
-    }
-
-    public class BugSnapshot
-    {
-        public enum ProductEnum
-        {
-            RTS,
-            RA
-        }
-        public BugSnapshot(BugInfo bug, SubChange subChange)
-        {
-            Bug = bug;
-            SubChange = new SubChange(subChange);
-        }
-
-        public BugSnapshot(BugSnapshot other) :
-            this(other.Bug, other.SubChange)
-        {
-        }
-
-        public override string ToString()
-        {
-            return Bug.Key + "," + SubChange.ToString();
-        }
-
-        internal bool HasProduct(ProductEnum product)
-        {
-            return Bug.Key.StartsWith(product.ToString());
-        }
-
-        public BugInfo Bug { get; set; }
-        public SubChange SubChange { get; set; }
-    }
-    public class BugWithChanges : BugInfo
-    {
-        public BugWithChanges(string key, string summary, string version, string resolution)
-            : base(key, summary, version, resolution)
-        {
-        }
-
-        public List<SubChange> SubChanges { get; set; } = new List<SubChange>();
-        public override string ToString()
-        {
-            return Key + " " + SubChanges.Count() + " changes";
-        }
-
-    }
-    public class BugInfo
-    {
-        public BugInfo()
-        {
-        }
-
-        public BugInfo(string key, string summary, string version, string resolution)
-        {
-            Key = key;
-            Summary = summary;
-            Version = version;
-            Resolution = resolution;
-        }
-
-        public override string ToString()
-        {
-            return Key;
-        }
-        public BugSnapshot.ProductEnum Product
-        {
-            get
-            {
-                if (Key.StartsWith("RA"))
-                    return BugSnapshot.ProductEnum.RA;
-                else if (Key.StartsWith("RTS"))
-                    return BugSnapshot.ProductEnum.RTS;
-                else
-                    return BugSnapshot.ProductEnum.RTS;
-            }
-        }
-        public string Key { get; set; }
-        public string Summary { get; set; }
-        public string Version { get; set; }
-        static public bool IsSR(JiraIssue issue)
-        {
-            var capSummary = issue.Summary.ToUpper();
-            if (capSummary.StartsWith("[") || issue.FixVersionsString.Contains("SR"))
-                return true;
-            return false;
-        }
-        public bool IsFixed
-        {
-            get
-            {
-                return Resolution == "Fixed";
-            }
-        }
-        public string Resolution { get; private set; }
-    }
-    public class SubChange
-    {
-        public SubChange(DateTimeOffset timestamp, string field, string status, string severity)
-        {
-            Field = field;
-            Timestamp = timestamp;
-            Status = status;
-            Severity = severity;
-        }
-
-        public SubChange(SubChange subChange) :
-            this(subChange.Timestamp, subChange.Field, subChange.Status, subChange.Severity)
-        {
-        }
-
-        public override string ToString()
-        {
-            return Field + " " + Timestamp.Date + " " + Status + " " + Severity;
-        }
-
-        internal bool HasSeverity(int i)
-        {
-            if (string.IsNullOrWhiteSpace(Severity))
-                return false;
-            return Severity.StartsWith(i.ToString());
-        }
-
-        public string Field { get; set; }
-        public string Status { get; set; }
-        public string Severity { get; set; }
-        public DateTimeOffset Timestamp { get; set; }
-        public bool IsDone
-        {
-            get
-            {
-                return (IsResolved || IsClosed); // || Status == "Blocked")
-            }
-        }
-        public bool IsResolved
-        {
-            get
-            {
-                return (Status == "Resolved");
-            }
-        }
-        public bool IsClosed
-        {
-            get
-            {
-                return (Status == "Closed"); 
-            }
-        }
-        public bool IsBlocked
-        {
-            get
-            {
-                return (Status == "Blocked");
-            }
-        }
-        public bool IsOpen
-        {
-            get
-            {
-                return (Status == "Open");
-            }
-        }
-        public static string _status = "status";
-        public static string _severity = "CS Severity";
-
-        public bool SeverityChanged
-        {
-            get
-            {
-                return (Field == _severity || Field == "Create");
-            }
-        }
-        public bool StatusChanged
-        {
-            get
-            {
-                return (Field == _status || Field == "Create");
-            }
+            await BugReport.Generate(cmbTeam.SelectedValue as string);
+            staStatus.Text = "Done " + sw.Elapsed.TotalSeconds.ToString("0") + "s";
+            (sender as Button).IsEnabled = true;
         }
     }
     public class SprintClass

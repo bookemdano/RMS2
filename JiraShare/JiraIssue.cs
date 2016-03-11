@@ -893,6 +893,7 @@ namespace JiraShare
 
         public SprintKey Key { get; set; }
         public bool FromFile { get; set; }
+        public string Team { get; set; }
     }
 
     public class SprintKey
@@ -932,7 +933,7 @@ namespace JiraShare
         }
         internal string ToFilename()
         {
-            return Project + "-" + Sprint;
+            return "Sprint " + Project + "-" + Sprint;
         }
     }
     public class SprintParameters

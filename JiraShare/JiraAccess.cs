@@ -2,12 +2,9 @@
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
-using System.IO.Compression;
 using System.Linq;
-using System.Net;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows;
 
 namespace JiraShare
 {
@@ -95,14 +92,15 @@ namespace JiraShare
             request += FieldsToGet();
             return LatestApi(JiraSourceEnum.Default) + request;
         }
-        internal static string GetBugsUri()
+        internal static string GetBugsUri(string team)
         {
             //issuetype = 'Production Bug' and(project = 'RA' OR project = 'RTS' OR project = 'RTSCS' OR project = 'RACS') and status!=closed and status!=resolved
             //str = HttpGet(_latestApi + @"/search?jql=project=MOB AND Sprint='Sprint 16' and issuetype not in (subTaskIssueTypes())&maxResults=200&fields=parent,summary,subtasks,assignee," + JiraIssue.IssueTypeField);
             string jql = "issuetype = 'Production Bug'";
             //jql += " AND Status!='Closed'";
             jql += " and(project = 'RA' OR project = 'RTS' OR project = 'RTSCS' OR project = 'RACS')";
-            //jql += " and Team=Mobile";
+            if (!string.IsNullOrWhiteSpace(team))
+                jql += " and Team='" + team + "'"; 
             var request = @"/search?jql=" + jql + "&maxResults=1000&expand=changelog";
             request += FieldsToGet();
             return LatestApi(JiraSourceEnum.Default) + request;
@@ -324,7 +322,7 @@ namespace JiraShare
 
         internal static async Task<int> CleanUp()
         {
-            var files = await FileUtils.GetFiles("*.jz");
+            var files = await FileUtils.GetFiles(_sprintFileMask);
             var datedFiles = files.Where(f => DateTimeFromFileName(f) != DateTime.MinValue).ToArray();
             var groupedDatedFiles = datedFiles.GroupBy(f => DateTimeFromFileName(f).Date);
 
@@ -377,9 +375,11 @@ namespace JiraShare
             return subFiles.OrderByDescending(f => DateTimeFromFileName(f)).First();
         }
 
+        static string _sprintFileMask = "Sprint*.jz";
+
         public static string GetFileMask(SprintKey key)
         {
-            return key.ToFilename() + "-*.jz";
+            return key.ToFilename() + "*.jz";
         }
 
         public static string GetFile(SprintKey key, DateTimeOffset timestamp)
@@ -459,11 +459,11 @@ namespace JiraShare
                 await JiraFileAccess.Write(new SprintKey(project, sprint).ToFilename(), rv);
             return rv;
         }
-        public static async Task<string> GetBugsLiveAsync()
+        public static async Task<string> GetBugsLiveAsync(string team)
         {
-            var rv = await HttpAccess.HttpGetAsync(JiraAccess.GetBugsUri(), true);
+            var rv = await HttpAccess.HttpGetAsync(JiraAccess.GetBugsUri(team), true);
             if (!rv.StartsWith("ERROR:"))
-                await JiraFileAccess.Write("Bugs", rv, true, true);
+                await JiraFileAccess.Write("Bugs" + team, rv, true, true);
             return rv;
         }
         public static async Task<string> GetSprintLive(string project, string sprint, bool showError)
