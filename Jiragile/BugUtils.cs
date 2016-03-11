@@ -174,7 +174,7 @@ namespace Jiragile
             if (fromFile)
                 fileName = fileName.Replace("sevs", "sevsFromFile");
             await FileUtils.WriteAllText(fileName + ".csv", string.Join(Environment.NewLine, dayOut.ToArray()));
-            if (!fromFile)
+            if (!fromFile) // save a copy to upload
                 await FileUtils.WriteAllTextWithPicker(fileName, string.Join(Environment.NewLine, dayOut.ToArray()), "csv");
         }
 
