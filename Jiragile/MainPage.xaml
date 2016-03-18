@@ -29,6 +29,7 @@
             <AppBarToggleButton Name="tglDetail" Click="tglShow_Click" Icon="List" Label="Details"/>
             <CommandBar.SecondaryCommands>
                 <AppBarButton Click="btnSetTeam_Click" Icon="AddFriend" Label="Set Team"/>
+                <AppBarButton Click="btnLocalCache_Click" Icon="AddFriend" Label="Local Cache"/>
             </CommandBar.SecondaryCommands>
         </CommandBar>
         <Grid Name="pnlSprint" Grid.Row="1" Visibility="Collapsed">

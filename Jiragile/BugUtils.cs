@@ -3,7 +3,6 @@ using JiraShare;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace Jiragile
@@ -136,25 +135,11 @@ namespace Jiragile
         }
         static private async Task CreateSeverityFile(DatedStats datedStats, string team, bool fromFile)
         {
-            var dayOut = new List<string>();
-            dayOut.Add(CountsAll.CsvHeader);
-            var weekOut = new List<string>();
-            weekOut.Add(CountsAll.CsvHeader);
-            CountsAll weekCounts = null;
+            var datedCounts = new List<CountsAll>();
             foreach (var kvp in datedStats.Bugs)
             {
                 var dt = kvp.Key;
                 var bugs = kvp.Value;
-                if (dt.DayOfWeek == DayOfWeek.Sunday)
-                {
-                    if (weekCounts != null)
-                    {
-                        weekCounts.Timestamp = dt.Date.AddDays(-1);// this is the end of the week
-                        weekOut.Add(weekCounts.ToCsv);
-                    }
-                    // write out old weekly
-                    weekCounts = new CountsAll(dt.Date);
-                }
                 var dayCounts = new CountsAll(dt.Date);
                 foreach (ProductEnum product in Enum.GetValues(typeof(ProductEnum)))
                 {
@@ -162,20 +147,29 @@ namespace Jiragile
                     for (int iSev = 0; iSev <= 3; iSev++)
                         byProd.BySev[iSev].UpdateCounts(datedStats, bugs, dt.Date, product, iSev);
                 }
-                if (weekCounts != null)
-                    weekCounts.CombineDays(dayCounts);
-                dayOut.Add(dayCounts.ToCsv);
+                datedCounts.Add(dayCounts);
             }
+            await WriteFile(datedCounts, team, false, fromFile);
+            await WriteFile(datedCounts, team, true, fromFile);
+        }
 
-            string fileName = "sevsByWeek" + team + " " + DateTimeOffset.Now.ToString("yyyyMMdd HHmm");
-            await FileUtils.WriteAllText(fileName + ".csv", string.Join(Environment.NewLine, weekOut.ToArray()));
+        static async Task WriteFile(List<CountsAll> datedCounts, string team, bool classic, bool fromFile)
+        {
+            var lines = new List<string>();
+            lines.Add(CountsAll.CsvHeader(classic));
+            foreach (var dc in datedCounts)
+                lines.Add(dc.ToCsv(classic));
 
-            fileName = "sevs" + team + " " + DateTimeOffset.Now.ToString("yyyyMMdd HHmm");
+            var rootName = "sevs";
+            if (classic)
+                rootName += "Classic";
+            var fileName = rootName + team + " " + DateTimeOffset.Now.ToString("yyyyMMdd HHmm");
             if (fromFile)
-                fileName = fileName.Replace("sevs", "sevsFromFile");
-            await FileUtils.WriteAllText(fileName + ".csv", string.Join(Environment.NewLine, dayOut.ToArray()));
-            if (!fromFile) // save a copy to upload
-                await FileUtils.WriteAllTextWithPicker(fileName, string.Join(Environment.NewLine, dayOut.ToArray()), "csv");
+                fileName = fileName.Replace(rootName, rootName + "FromFile");
+            await FileUtils.WriteAllText(fileName + ".csv", string.Join(Environment.NewLine, lines));
+
+            if (classic) // save a copy to upload
+                await FileUtils.WriteAllTextWithPicker(fileName, string.Join(Environment.NewLine, lines), "csv");
         }
 
         internal static async Task Generate(string team)
@@ -453,8 +447,8 @@ namespace Jiragile
         public CountsAll(DateTimeOffset dt)
         {
             Timestamp = dt;
-            ByProd.Add(ProductEnum.RA, new CountsForProduct());
             ByProd.Add(ProductEnum.RTS, new CountsForProduct());
+            ByProd.Add(ProductEnum.RA, new CountsForProduct());
         }
         public DateTimeOffset Timestamp { get; set; }
         public Dictionary<ProductEnum, CountsForProduct> ByProd { get; set; } = new Dictionary<ProductEnum, CountsForProduct>();
@@ -475,41 +469,32 @@ namespace Jiragile
                 prod.Value.Combine(other.ByProd[prod.Key]);
         }
 
-        public string ToCsv
+        public string ToCsv(bool classic)
         {
-            get
-            {
-                return Timestamp.Date.ToString(@"M/d/yyyy") + "," + string.Join(",", StringParts);
-            }
+            return Timestamp.Date.ToString(@"M/d/yyyy") + "," + string.Join(",", StringParts(classic));
         }
-        private string[] StringParts
+        private string[] StringParts(bool classic)
         {
-            get
-            {
-                var rv = new List<string>();
-                foreach (var prod in ByProd)
-                    rv.AddRange(prod.Value.StringParts);
-                rv.AddRange(Total.StringParts);
-                return rv.ToArray();
-            }
+            var rv = new List<string>();
+            foreach (var prod in ByProd)
+                rv.AddRange(prod.Value.StringParts(classic));
+            rv.AddRange(Total.StringParts(false, classic));
+            return rv.ToArray();
         }
 
-        public static string CsvHeader
+        public static string CsvHeader(bool classic)
         {
-            get
+            var rv = "Date";
+            foreach (var product in Enum.GetValues(typeof(ProductEnum)))
             {
-                var rv = "Date";
-                foreach (var product in Enum.GetValues(typeof(ProductEnum)))
+                for (int iSev = 0; iSev <= 3; iSev++)
                 {
-                    for (int iSev = 0; iSev <= 3; iSev++)
-                    {
-                        rv += CountArray.CsvHeader(product.ToString(), iSev.ToString());
-                    }
-                    rv += CountArray.CsvHeader(product.ToString(), null);
+                    rv += CountArray.CsvHeader(product.ToString(), iSev.ToString(), classic);
                 }
-                rv += CountArray.CsvHeader(null, null);
-                return rv;
+                rv += CountArray.CsvHeader(product.ToString(), null, classic);
             }
+            rv += CountArray.CsvHeader(null, null, classic);
+            return rv;
         }
     }
     public class CountsForProduct
@@ -536,41 +521,49 @@ namespace Jiragile
             foreach (var sev in BySev)
                 sev.Value.Combine(other.BySev[sev.Key], true);
         }
-        internal string[] StringParts
+        internal string[] StringParts(bool classic)
         {
-            get
-            {
-                var rv = new List<string>();
-                foreach (var sev in BySev)
-                    rv.AddRange(sev.Value.StringParts);
-                rv.AddRange(Total.StringParts);
-                return rv.ToArray();
-            }
+            var rv = new List<string>();
+            foreach (var sev in BySev)
+                rv.AddRange(sev.Value.StringParts(true, classic));
+            rv.AddRange(Total.StringParts(false, classic));
+            return rv.ToArray();
         }
     }
+
     public class CountArray
     {
-        static public string CsvHeader(string product, string iSev)
+        static public string CsvHeader(string product, string sev, bool classic)
         {
-            return ",New" + product + iSev + ",JustClosed" + product + iSev + ",Open" + product + iSev + ",WIP" + product + iSev + ",Blocked" + product + iSev + ",Resolved" + product + iSev + ",ClosedFixed" + product + iSev + ",ClosedNot" + product + iSev + ",Closed" + product + iSev;
+            var rv = string.Empty;
+            if ((classic && sev != null) || !classic)
+                rv += ",New" + product + sev + ",JustClosed" + product + sev;
+            rv += ",Open" + product + sev + ",WIP" + product + sev + ",Blocked" + product + sev + ",Resolved" + product + sev;
+            if (!classic)
+                rv += ",ClosedFixed" + product + sev + ",ClosedNot" + product + sev;
+            rv +=  ",Closed" + product + sev;
+            return rv;
         }
-        public string[] StringParts
+        public string[] StringParts(bool sev, bool classic)
         {
-            get
+            var rv = new List<string>();
+            if (!classic || sev)
             {
-                var rv = new List<string>();
                 rv.Add(OpenedToday.ToString());
                 rv.Add(ClosedToday.ToString());
-                rv.Add(Open.ToString());
-                rv.Add(InProgress.ToString());
-                rv.Add(Blocked.ToString());
-                rv.Add(Resolved.ToString());
+            }
+            rv.Add(Open.ToString());
+            rv.Add(InProgress.ToString());
+            rv.Add(Blocked.ToString());
+            rv.Add(Resolved.ToString());
+            if (!classic)
+            {
                 rv.Add(ClosedFixed.ToString());
                 rv.Add(ClosedNot.ToString());
-                rv.Add(Closed.ToString());
-
-                return rv.ToArray();
             }
+            rv.Add(Closed.ToString());
+
+            return rv.ToArray();
         }
 
         internal void Combine(CountArray other, bool differentDays)

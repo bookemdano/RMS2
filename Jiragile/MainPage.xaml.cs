@@ -745,6 +745,11 @@ namespace Jiragile
             staStatus.Text = "Done " + sw.Elapsed.TotalSeconds.ToString("0") + "s";
             (sender as Button).IsEnabled = true;
         }
+
+        private async void btnLocalCache_Click(object sender, RoutedEventArgs e)
+        {
+            await Launcher.LaunchFolderAsync(Windows.Storage.ApplicationData.Current.LocalFolder);
+        }
     }
     public class SprintClass
     {
